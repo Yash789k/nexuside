@@ -250,7 +250,9 @@ async function boot() {
         .slice(0, 12)
     : [];
   const protectedStorage =
-    safeStorage.isEncryptionAvailable() &&
+    (await credentialOperation(safeStorage.isAsyncEncryptionAvailable()).catch(
+      () => false,
+    )) &&
     (process.platform !== "linux" ||
       safeStorage.getSelectedStorageBackend() !== "basic_text");
   vault = new CredentialVault(

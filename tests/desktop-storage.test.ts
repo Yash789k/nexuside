@@ -58,3 +58,26 @@ test("desktop vault keeps keys in session memory when protected encryption is un
     await rm(dir, { recursive: true, force: true });
   }
 });
+test("a locked credential store leaves saved keys intact and keeps project state readable", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "nexus-vault-locked-"));
+  try {
+    const file = path.join(dir, "keys.json");
+    const saved = new CredentialVault(file, true, encrypt, decrypt);
+    await saved.load();
+    await saved.set("OPENROUTER_API_KEY", "fixture-persisted-key");
+    const before = await readFile(file, "utf8");
+    const locked = new CredentialVault(file, false, encrypt, decrypt);
+    await locked.load();
+    assert.equal(await locked.get("OPENROUTER_API_KEY"), undefined);
+    assert.match(locked.warning, /locked or unavailable/);
+    assert.equal(await readFile(file, "utf8"), before);
+    const unlocked = new CredentialVault(file, true, encrypt, decrypt);
+    await unlocked.load();
+    assert.equal(
+      await unlocked.get("OPENROUTER_API_KEY"),
+      "fixture-persisted-key",
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

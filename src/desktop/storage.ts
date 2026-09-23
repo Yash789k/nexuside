@@ -40,10 +40,11 @@ export class CredentialVault {
     if (this.memory.has(env)) return this.memory.get(env) || undefined;
     const stored = this.entries[env];
     if (!stored) return undefined;
-    if (!this.protectedStorage)
-      throw new Error(
-        "Unlock your system credential store to use saved provider keys.",
-      );
+    if (!this.protectedStorage) {
+      this.warning =
+        "Saved keys are locked or unavailable. Unlock the system credential store and restart, or use a key for this session.";
+      return undefined;
+    }
     try {
       return await this.decrypt(Buffer.from(stored, "base64"));
     } catch {
