@@ -17,7 +17,7 @@ await writeFile(path.join(workspace, "README.md"), "# Fibonacci workspace\n");
 const app = await serve(
   new Service(await Workspace.open(workspace)),
   path.resolve("dist/web"),
-  4329,
+  4383,
 );
 await writeFile(
   process.env.NEXUS_E2E_STATE!,

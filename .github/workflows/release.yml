@@ -20,6 +20,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+      - run: npm run test:cli
+      - run: python3 scripts/cli-pty.py
+        if: runner.os != 'Windows'
       - run: node dist/cli.cjs demo smoke --yes --host
   integration:
     runs-on: ubuntu-latest
@@ -33,6 +36,9 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+      - run: npm run test:soak
+        env:
+          NEXUS_SOAK_LABEL: release-soak
       - run: xvfb-run -a npm run test:extension
       - run: npm run sandbox-build
       - run: npm run test:sandbox
@@ -53,16 +59,16 @@ jobs:
       - run: npm run package:vsix
       - run: npm run package:cli
       - name: Create checksums
-        run: cd .. && sha256sum nexuside-*.vsix nexuside-*.tgz > SHA256SUMS.txt
+        run: cd ../nexuside-local-qa && sha256sum nexuside-*.vsix nexuside-*.tgz > SHA256SUMS.txt
       - name: Publish download assets
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" ../nexuside-*.vsix ../nexuside-*.tgz ../SHA256SUMS.txt --clobber
+            gh release upload "$GITHUB_REF_NAME" ../nexuside-local-qa/nexuside-*.vsix ../nexuside-local-qa/nexuside-*.tgz ../nexuside-local-qa/SHA256SUMS.txt
             gh release edit "$GITHUB_REF_NAME" --draft=false
           else
-            gh release create "$GITHUB_REF_NAME" ../nexuside-*.vsix ../nexuside-*.tgz ../SHA256SUMS.txt --verify-tag --title "NexusIDE $GITHUB_REF_NAME" --notes-file CHANGELOG.md
+            gh release create "$GITHUB_REF_NAME" ../nexuside-local-qa/nexuside-*.vsix ../nexuside-local-qa/nexuside-*.tgz ../nexuside-local-qa/SHA256SUMS.txt --verify-tag --title "NexusIDE $GITHUB_REF_NAME" --notes-file CHANGELOG.md
           fi
           nexus_release_id=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" --jq .id)
           gh api -H 'Cache-Control: no-cache' "repos/$GITHUB_REPOSITORY/releases/$nexus_release_id/assets?per_page=100" > /tmp/nexus-release-assets.json

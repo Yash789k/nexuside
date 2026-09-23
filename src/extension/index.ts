@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { Workspace } from "../core/workspace";
 import { Service } from "../server/service";
 import { loadConfig, envKey } from "../core/config";
@@ -53,13 +53,14 @@ export function activate(context: vscode.ExtensionContext) {
       await Workspace.open(root),
       key,
       async (env, value) => {
-        await context.secrets.store(env, value);
+        if (value) await context.secrets.store(env, value);
+        else await context.secrets.delete(env);
       },
     );
     panel = vscode.window.createWebviewPanel(
       "nexuside",
       "NexusIDE",
-      vscode.ViewColumn.One,
+      vscode.ViewColumn.Beside,
       {
         enableScripts: true,
         retainContextWhenHidden: true,
@@ -79,11 +80,16 @@ export function activate(context: vscode.ExtensionContext) {
           vscode.Uri.joinPath(context.extensionUri, "dist", "web", file),
         )
         .toString();
+    let sessionId = context.workspaceState.get<string>("nexus.editorSession");
+    if (!sessionId) {
+      sessionId = randomUUID();
+      await context.workspaceState.update("nexus.editorSession", sessionId);
+    }
     const nonce = randomBytes(16).toString("hex");
     view.html = html
       .replace(
         "<head>",
-        `<head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${view.cspSource} data:; style-src ${view.cspSource}; script-src 'nonce-${nonce}'; font-src ${view.cspSource};">`,
+        `<head><meta name="nexus-session" content="${sessionId}"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${view.cspSource} data:; style-src ${view.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; font-src ${view.cspSource};">`,
       )
       .replace(
         /src="\.\/([^\"]+)"/g,

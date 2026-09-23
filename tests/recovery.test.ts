@@ -5,7 +5,7 @@ import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { Workspace } from "../src/core/workspace";
-import { Engine } from "../src/core/engine";
+import { Engine, approvalRevision } from "../src/core/engine";
 import { defaults } from "../src/core/config";
 import { git } from "../src/core/process";
 import { runTests } from "../src/core/sandbox";
@@ -188,7 +188,7 @@ test("approved Git commit preserves unrelated staged changes", async () => {
       },
     };
     await e.store.save(run);
-    const result = await e.decide(run.id, true);
+    const result = await e.decide(run.id, true, approvalRevision(await e.store.get(run.id)));
     assert.equal(result.status, "running", result.error);
     assert.equal(await g(["show", "HEAD:a.txt"]), "agent edit");
     assert.match(

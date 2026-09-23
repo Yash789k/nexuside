@@ -4,28 +4,28 @@ A local-first AI coding workspace with a VS Code extension, a browser dashboard,
 
 ![NexusIDE review workspace](docs/dashboard.png)
 
-**Version 0.1.0 — first functional release.** Bring your own provider credentials, or try the explicitly labeled offline walkthrough without any API calls. This is a working local tool, not a hosted cloud service.
+**Version 0.2.0 — local QA build, not published.** Bring your own provider credentials, or try the explicitly labeled offline walkthrough without any API calls. This is a working local tool, not a hosted cloud service.
 
 ## Download and start
 
-Get the latest assets from [GitHub Releases](https://github.com/Yash789k/nexuside/releases/latest).
+Use the local `nexuside-0.2.0.vsix` and `nexuside-0.2.0.tgz` artifacts supplied with this QA build. [GitHub Releases](https://github.com/Yash789k/nexuside/releases/latest) still contains the separately published 0.1.0 release.
 
 ### VS Code
 
-1. Download `nexuside-0.1.0.vsix`.
+1. Download `nexuside-0.2.0.vsix`.
 2. In VS Code, open **Extensions → … → Install from VSIX** and select it.
 3. Open and trust a project folder.
 4. Run **NexusIDE: Open Workspace** from the command palette.
 5. Select **Try the offline walkthrough**, or open **Settings** to connect your models.
 
-You can also install with `code --install-extension ./nexuside-0.1.0.vsix`. The extension bundles its runtime; you do not need to run npm install in your project.
+You can also install with `code --install-extension ./nexuside-0.2.0.vsix`. The extension bundles its runtime; you do not need to run npm install in your project.
 
 ### Terminal / PowerShell
 
-Install [Node.js 22 or later](https://nodejs.org/en/download), download `nexuside-0.1.0.tgz`, then run:
+Install [Node.js 22 or later](https://nodejs.org/en/download), download `nexuside-0.2.0.tgz`, then run:
 
 ```sh
-npm install -g ./nexuside-0.1.0.tgz
+npm install -g ./nexuside-0.2.0.tgz
 nexus --help
 nexus demo --yes
 ```
@@ -50,16 +50,16 @@ Or work directly from the terminal:
 nexus -w ./my-project run "Add input validation and tests"
 nexus -w ./my-project chat
 nexus -w ./my-project runs
-nexus -w ./my-project approve <run-id>
-nexus -w ./my-project approve <run-id> --reject
+nexus -w ./my-project approve <run-id> --revision <pending-revision>
+nexus -w ./my-project approve <run-id> --revision <pending-revision> --reject
 nexus -w ./my-project resume <run-id>
 nexus -w ./my-project trace <run-id> --verify
 nexus -w ./my-project eval --json
 ```
 
-Approvals pause and persist. `--yes` auto-approves file changes and Docker tests. Host tests additionally require `--allow-host-tests`. Commits and browser actions still need explicit review. `--json` produces machine-readable run state and pauses for approval; scripts can continue using `approve`.
+Approvals pause and persist. `--yes` auto-approves file changes and Docker tests. Host tests additionally require `--allow-host-tests`. Commits and browser actions still need explicit review. `--json` produces machine-readable run state and pauses for approval; scripts can continue using `approve --revision <pending.revision>`. Each approval is bound to the displayed action, contents, and configuration. Old approvals cannot authorize a later action.
 
-A [recorded walkthrough](https://github.com/Yash789k/nexuside/releases/download/v0.1.0/nexuside-0.1.0-demo.webm) shows the actual review, test, trace, and evaluation flow.
+The earlier release's [recorded walkthrough](https://github.com/Yash789k/nexuside/releases/download/v0.1.0/nexuside-0.1.0-demo.webm) shows its review, test, trace, and evaluation flow.
 
 ## What works
 
@@ -159,7 +159,7 @@ docker build -t nexuside-sandbox:0.1.0 sandbox
 npm run test:sandbox
 ```
 
-`npm run test:extension` downloads a clean VS Code runtime and tests activation and panel creation. On Linux, use `xvfb-run -a npm run test:extension`. The test matrix includes Windows, macOS and Linux. See [OpenRouter](docs/openrouter.md), [architecture](docs/architecture.md), [validation](docs/validation.md), [contributing](CONTRIBUTING.md), and [release notes](CHANGELOG.md).
+`npm run test:extension` uses a clean VS Code profile and exercises activation, native document save, actual webview editing, host zoom and panel lifecycle; unavailable foreground checks are explicitly reported. Set `NEXUS_VSIX` to test an installed local VSIX. On Linux, use `xvfb-run -a npm run test:extension`. CI is configured for Windows, macOS and Linux; a configuration is not evidence that this local change has run on those hosts. See [OpenRouter](docs/openrouter.md), [architecture](docs/architecture.md), [validation](docs/validation.md), [contributing](CONTRIBUTING.md), and [release notes](CHANGELOG.md).
 
 ```sh
 npm run release:local
@@ -170,3 +170,16 @@ The release workflow builds, tests, packages and uploads VSIX, npm tarball and c
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+
+## IDE workspace and QA build
+
+IDE mode has CodeMirror tabs, up to four resizable editor groups, shared document views, tab reordering and edge drops, quick-open, literal workspace search, file/folder creation, rename, recoverable deletion, Save/Save All, optional idle autosave, and contextual file assistance. Agent mode retains task drafts, history, approvals, changes, traces and evaluations. Switching the visible mode never changes a saved run's mode or configuration. IDE requests cannot invoke test, browser or commit execution tools.
+
+Use Commands for find/replace, go-to-line, split, move/close group, undo/redo and word wrap. Cmd/Ctrl+P opens files; Cmd/Ctrl+Shift+P opens commands; Cmd/Ctrl+S saves; add Shift for Save All; Cmd/Ctrl+\ splits right; add Shift for below; Ctrl+PageUp/PageDown switches tabs; Cmd/Ctrl+Alt+Left/Right focuses groups. Native browser/VS Code zoom shortcuts remain owned by the host.
+
+Dirty documents survive tab/mode changes. Last-view close offers Save/Discard/Cancel. Reload restores content and layout from `.nexus/editor-sessions`; watch the recovery status before closing. Undo history restarts after reload. Browser close prompts protect dirty buffers, and backend recovery errors remain visible. No application can guarantee the last keystroke survives power loss before persistence. External changes reload clean buffers; dirty buffers require explicit comparison. A stale save cannot overwrite a newer file. Multi-file writes use a recovery journal; conflicting external edits preserve that journal for manual recovery.
+
+Supported bounds: 512,000 bytes per UTF-8 text file; 100 open documents; four groups; 1,200 indexed entries/12 levels; 100 content-search hits; five media attachments/20 MB total; 24 MB per editor recovery snapshot. Truncation is disclosed. Quick Open accepts exact paths beyond the index. Deleted items remain under `.nexus/trash` until you remove them; they are excluded from agent file tools. No browser LSP, debugger or unrestricted terminal is advertised; those are VS Code host capabilities.
+
+Run `npm run test:smoke`, `npm run test:e2e`, `npm run test:cli`, `npm run test:extension`, `npm run test:stress`, and `npm run test:soak`. The soak defaults to **1,800 real seconds** with seed 230923 and local provider fixtures. `npm run test:performance` compares the baseline sibling checkout and this checkout on identical generated workloads. See [QA commands and limitations](docs/qa/README.md), [coverage contract](docs/qa/contract.md), and the interaction matrix in that directory. Local packaging writes into `../nexuside-local-qa`; it does not publish or modify GitHub releases.

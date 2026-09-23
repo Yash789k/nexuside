@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
 import { open, unlink, readFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
@@ -35,15 +35,36 @@ const attachmentSchema = z.object({
     "video/mp4",
     "video/webm",
   ]),
-  data: z.string().regex(/^[A-Za-z0-9+/]*={0,2}$/),
+  data: z
+    .string()
+    .min(4)
+    .max(28_000_000)
+    .refine(
+      (value) => value.length % 4 === 0 && /^[A-Za-z0-9+/]*={0,2}$/.test(value),
+      "Invalid base64 data",
+    ),
 });
 export const startSchema = z.object({
-  prompt: z.string().min(1).max(30_000),
+  prompt: z.string().trim().min(1).max(30_000),
   mode: z.enum(["ide", "agent"]).default("agent"),
   priority: z.enum(["economy", "balanced", "quality"]).default("balanced"),
   model: z.string().default("auto"),
   attachments: z.array(attachmentSchema).max(5).default([]),
 });
+export function approvalRevision(run: Run) {
+  if (!run.pending) throw new Error("No pending action");
+  const { revision: _revision, ...pending } = run.pending;
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        id: run.id,
+        pending,
+        config: run.config,
+        steps: run.steps,
+      }),
+    )
+    .digest("hex");
+}
 export class Engine {
   readonly store: Store;
   private active = new Map<string, AbortController>();
@@ -64,7 +85,12 @@ export class Engine {
     config?: Config,
   ) {
     const parsed = startSchema.parse(input);
-    if (parsed.attachments.reduce((n, a) => n + a.data.length, 0) > 28_000_000)
+    if (
+      parsed.attachments.reduce(
+        (n, a) => n + Buffer.byteLength(a.data, "base64"),
+        0,
+      ) > 20_000_000
+    )
       throw new Error("Attachments exceed the 20 MB total limit");
     const c = config ?? (await loadConfig());
     const now = new Date().toISOString();
@@ -227,7 +253,14 @@ export class Engine {
                   : await complete(
                       model,
                       run.messages,
-                      toolDefinitions,
+                      run.mode === "ide"
+                        ? toolDefinitions.filter(
+                            (t) =>
+                              !["run_tests", "browser", "git_commit"].includes(
+                                t.name,
+                              ),
+                          )
+                        : toolDefinitions,
                       await this.key(model),
                       run.config.maxOutputTokens,
                       controller.signal,
@@ -343,6 +376,11 @@ export class Engine {
     try {
       const schema = schemas[call.name];
       if (!schema) throw new Error("Unknown tool");
+      if (
+        run.mode === "ide" &&
+        ["run_tests", "browser", "git_commit"].includes(call.name)
+      )
+        throw new Error("Execution tools require a new Agent mode task.");
       const args = schema.parse(call.arguments);
       if (call.name === "plan") {
         run.plan = args.steps;
@@ -411,6 +449,7 @@ export class Engine {
         };
       }
       if (run.pending) {
+        run.pending.revision = approvalRevision(run);
         run.status = "awaiting_approval";
         await this.store.trace(run.id, "approval_requested", {
           kind: run.pending.kind,
@@ -426,11 +465,15 @@ export class Engine {
       await this.result(run, call, { error: (e as Error).message });
     }
   }
-  async decide(id: string, approved: boolean) {
+  async decide(id: string, approved: boolean, revision: string) {
     return this.lock(async () => {
       const run = await this.store.get(id);
       if (run.status !== "awaiting_approval" || !run.pending)
         throw new Error("This run is not waiting for approval");
+      if (revision !== approvalRevision(run))
+        throw new Error(
+          "This approval is stale. Review the current action before deciding.",
+        );
       if (await this.cancelled(id)) {
         run.status = "cancelled";
         run.pending = undefined;
@@ -544,7 +587,10 @@ export class Engine {
           await this.result(run, call, result);
         }
         run.pending = undefined;
-        run.status = controller.signal.aborted ? "cancelled" : "running";
+        run.status =
+          controller.signal.aborted || (await this.cancelled(id))
+            ? "cancelled"
+            : "running";
         await this.store.save(run);
       } catch (e) {
         run.pending = undefined;

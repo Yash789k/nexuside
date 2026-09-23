@@ -1,5 +1,7 @@
 # Release validation
 
+This page records the earlier 0.1.0 validation. For the unpublished 0.2.0 QA candidate, use the [verification commands](qa/README.md), [interaction matrix](qa/interaction-matrix.md), [issue ledger](qa/issue-ledger.md) and accompanying `nexuside-qa-evidence/QA-REPORT.md`. Configured CI jobs are not evidence that this local revision ran on every platform.
+
 The initial release was validated on macOS arm64 with Node.js 22, a clean VS Code 1.139 runtime, Playwright Chromium, and Docker Desktop. Provider API contracts were exercised against local HTTP fixtures; no paid provider requests or user credentials were used.
 
 ## Automated coverage

@@ -11,3 +11,6 @@ playwright-report/
 .DS_Store
 
 .vscode-test/
+
+.vscode-test
+test-results-interactions/

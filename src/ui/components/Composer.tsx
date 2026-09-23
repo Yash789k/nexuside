@@ -40,7 +40,7 @@ export function Composer({
     try {
       const next: Attachment[] = [];
       for (const file of Array.from(files)) {
-        if (file.size > 20_000_000)
+        if (file.size === 0 || file.size > 20_000_000)
           throw new Error("Choose files smaller than 20 MB");
         const data = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
@@ -53,7 +53,13 @@ export function Composer({
       const all = [...attachments, ...next];
       if (
         all.length > 5 ||
-        all.reduce((n, a) => n + a.data.length, 0) > 28_000_000
+        all.reduce(
+          (n, a) =>
+            n +
+            ((a.data.length * 3) / 4 -
+              (a.data.endsWith("==") ? 2 : a.data.endsWith("=") ? 1 : 0)),
+          0,
+        ) > 20_000_000
       )
         throw new Error("Attach up to 5 files, 20 MB total");
       setAttachments(all);

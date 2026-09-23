@@ -62,7 +62,7 @@ test("loopback HTTP server requires a token and same origin; real demo can be re
     assert.equal(state.pending.kind, "edits");
     assert.equal((await request("file", { path: "../escape" })).status, 400);
     assert.equal(
-      (await request("decision", { id: run.id, approved: false })).status,
+      (await request("decision", { id: run.id, approved: false, revision: state.pending.revision })).status,
       200,
     );
     for (let i = 0; i < 50; i++) {

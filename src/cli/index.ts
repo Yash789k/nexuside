@@ -5,7 +5,7 @@ import { mkdir, writeFile, access, readFile, lstat } from "node:fs/promises";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { Workspace } from "../core/workspace";
-import { Engine } from "../core/engine";
+import { Engine, approvalRevision } from "../core/engine";
 import { loadConfig, configPath, envKey, saveConfig } from "../core/config";
 import { available } from "../core/router";
 import { openRouterCatalog } from "../core/catalog";
@@ -16,9 +16,15 @@ import { evaluate } from "../core/evaluation";
 import { docker, SANDBOX_IMAGE } from "../core/sandbox";
 import type { Run, Attachment } from "../core/types";
 const program = new Command()
+  .exitOverride()
+  .configureOutput({
+    writeErr: (text) => {
+      if (!process.argv.includes("--json")) process.stderr.write(text);
+    },
+  })
   .name("nexus")
   .description("NexusIDE — local IDE, agent and intelligent model router")
-  .version("0.1.0")
+  .version("0.2.0")
   .option("-w, --workspace <path>", "Workspace directory", process.cwd());
 const root = () => path.resolve(program.opts().workspace);
 async function engine() {
@@ -26,7 +32,18 @@ async function engine() {
 }
 function printRun(run: Run, json = false, workspace = root()) {
   if (json) {
-    console.log(JSON.stringify(run, null, 2));
+    console.log(
+      JSON.stringify(
+        {
+          ...run,
+          pending: run.pending
+            ? { ...run.pending, revision: approvalRevision(run) }
+            : undefined,
+        },
+        null,
+        2,
+      ),
+    );
     return;
   }
   console.log(
@@ -35,7 +52,9 @@ function printRun(run: Run, json = false, workspace = root()) {
   if (run.pending) {
     console.log(`\n${run.pending.title}\n${run.pending.detail}`);
     for (const c of run.pending.changes ?? []) console.log(c.diff);
-    console.log(`\nReview: nexus -w "${workspace}" approve ${run.id}`);
+    console.log(
+      `\nReview: nexus -w "${workspace}" approve ${run.id} --revision ${approvalRevision(run)}`,
+    );
   }
   if (run.summary) console.log("\n" + run.summary);
   if (run.error) console.error("\n" + run.error);
@@ -45,35 +64,73 @@ async function finish(
   run: Run,
   opts: { yes?: boolean; json?: boolean; allowHostTests?: boolean } = {},
 ) {
-  while (true) {
-    if (run.status === "running") run = await e.drive(run.id);
-    if (run.status !== "awaiting_approval") break;
-    if (opts.json || (!stdin.isTTY && !opts.yes)) break;
-    printRun(run, false, e.workspace.root);
-    let approved = false;
-    if (opts.yes && ["edits", "tests"].includes(run.pending!.kind)) {
-      if (
-        run.pending!.kind === "tests" &&
-        run.config.testRunner === "host" &&
-        !opts.allowHostTests
-      ) {
-        console.log(
-          "Host execution needs --allow-host-tests, or approve this run explicitly.",
-        );
-        break;
-      }
-      approved = true;
-    } else if (stdin.isTTY) {
-      const rl = createInterface({ input: stdin, output: stdout });
-      approved = /^y(es)?$/i.test(
-        (await rl.question("Approve this action? [y/N] ")).trim(),
-      );
-      rl.close();
-    } else break;
-    run = await e.decide(run.id, approved);
+  let interrupted = false;
+  let cancellation: Promise<void> | undefined;
+  let cancellationError: unknown;
+  const stop = new AbortController();
+  const interrupt = () => {
+    interrupted = true;
+    stop.abort();
+    cancellation ??= e.cancel(run.id).catch((err) => {
+      cancellationError = err;
+    });
+  };
+  process.on("SIGINT", interrupt);
+  try {
+    while (true) {
+      if (run.status === "running") run = await e.drive(run.id);
+      if (run.status !== "awaiting_approval") break;
+      if (opts.json || (!stdin.isTTY && !opts.yes)) break;
+      printRun(run, false, e.workspace.root);
+      let approved = false;
+      if (opts.yes && ["edits", "tests"].includes(run.pending!.kind)) {
+        if (
+          run.pending!.kind === "tests" &&
+          run.config.testRunner === "host" &&
+          !opts.allowHostTests
+        ) {
+          console.log(
+            "Host execution needs --allow-host-tests, or approve this run explicitly.",
+          );
+          break;
+        }
+        approved = true;
+      } else if (stdin.isTTY) {
+        const rl = createInterface({ input: stdin, output: stdout });
+        // Readline consumes terminal Ctrl+C itself; process SIGINT alone is
+        // insufficient while a question is active.
+        rl.once("SIGINT", interrupt);
+        try {
+          approved = /^y(es)?$/i.test(
+            (
+              await rl.question("Approve this action? [y/N] ", {
+                signal: stop.signal,
+              })
+            ).trim(),
+          );
+        } catch (err) {
+          if (!interrupted) throw err;
+        } finally {
+          rl.close();
+        }
+      } else break;
+      if (interrupted) break;
+      run = await e.decide(run.id, approved, approvalRevision(run));
+    }
+  } finally {
+    process.removeListener("SIGINT", interrupt);
+  }
+  if (interrupted) {
+    await cancellation;
+    if (cancellationError) throw cancellationError;
+    run = await e.store.get(run.id);
+    process.exitCode = 130;
   }
   printRun(run, opts.json, e.workspace.root);
-  if (run.status === "failed" || run.tests.some((t) => t.exitCode !== 0))
+  if (
+    !interrupted &&
+    (run.status === "failed" || run.tests.some((t) => t.exitCode !== 0))
+  )
     process.exitCode = 1;
   return run;
 }
@@ -149,11 +206,15 @@ program
 program
   .command("approve")
   .argument("<id>")
+  .requiredOption(
+    "--revision <revision>",
+    "Revision from the displayed action or JSON pending.revision",
+  )
   .option("--reject", "Reject the pending action")
   .option("--json", "Emit JSON and pause at the next approval")
   .action(async (id, opts) => {
     const e = await engine();
-    await finish(e, await e.decide(id, !opts.reject), opts);
+    await finish(e, await e.decide(id, !opts.reject, opts.revision), opts);
   });
 program
   .command("resume")
@@ -441,6 +502,9 @@ program
     if (r.exitCode !== 0) process.exitCode = 1;
   });
 program.parseAsync().catch((e) => {
-  console.error(`NexusIDE: ${e.message}`);
+  if (e.exitCode === 0) return;
+  if (process.argv.includes("--json"))
+    console.log(JSON.stringify({ error: e.message }));
+  else console.error(`NexusIDE: ${e.message}`);
   process.exitCode = 1;
 });

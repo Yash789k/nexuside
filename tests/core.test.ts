@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { Workspace } from "../src/core/workspace";
 import { Store } from "../src/core/store";
-import { Engine } from "../src/core/engine";
+import { Engine, approvalRevision } from "../src/core/engine";
 import { defaults } from "../src/core/config";
 import { route } from "../src/core/router";
 import { evaluate } from "../src/core/evaluation";
@@ -170,10 +170,10 @@ test("offline agent completes plan, review, real host tests and evaluation end t
     assert.equal(run.status, "awaiting_approval");
     assert.equal(run.pending?.kind, "edits");
     await assert.rejects(readFile(path.join(f.root, "src/fibonacci.mjs")));
-    run = await e.decide(run.id, true);
+    run = await e.decide(run.id, true, approvalRevision(await e.store.get(run.id)));
     run = await e.drive(run.id);
     assert.equal(run.pending?.kind, "tests");
-    run = await e.decide(run.id, true);
+    run = await e.decide(run.id, true, approvalRevision(await e.store.get(run.id)));
     run = await e.drive(run.id);
     assert.equal(run.status, "completed");
     assert.equal(run.tests[0].exitCode, 0, run.tests[0].output);
@@ -202,7 +202,7 @@ test("rejecting staged edits leaves workspace unchanged and produces no fabricat
       structuredClone(defaults),
     );
     r = await e.drive(r.id);
-    r = await e.decide(r.id, false);
+    r = await e.decide(r.id, false, approvalRevision(await e.store.get(r.id)));
     r = await e.drive(r.id);
     assert.equal(r.status, "completed");
     assert.equal(r.changes.length, 0);
@@ -222,8 +222,9 @@ test("cancelled approval cannot be replayed", async () => {
       structuredClone(defaults),
     );
     await e.drive(r.id);
+    const revision = approvalRevision(await e.store.get(r.id));
     await e.cancel(r.id);
-    await assert.rejects(e.decide(r.id, true), /not waiting/);
+    await assert.rejects(e.decide(r.id, true, revision), /not waiting/);
     assert.deepEqual(await f.workspace.list(), []);
   } finally {
     await f.cleanup();

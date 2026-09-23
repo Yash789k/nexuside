@@ -42,7 +42,10 @@ export async function execFile(
       });
       const stop = () => {
         try {
-          if (process.platform === "win32") child.kill("SIGKILL");
+          if (process.platform === "win32") {
+            const killer=spawn("taskkill",["/pid",String(child.pid),"/T","/F"],{shell:false,windowsHide:true,stdio:"ignore"});
+            killer.on("error",()=>child.kill("SIGKILL"));
+          }
           else process.kill(-child.pid!, "SIGKILL");
         } catch {}
       };

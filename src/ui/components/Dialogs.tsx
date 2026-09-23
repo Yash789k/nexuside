@@ -16,11 +16,14 @@ export function Dialog({
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
+    const prior = document.activeElement as HTMLElement;
     ref.current?.showModal();
+    return () => prior?.focus();
   }, []);
   return (
     <dialog
       ref={ref}
+      aria-label={title}
       className={`dialog ${wide ? "wide" : ""}`}
       onCancel={onClose}
       onClick={(e) => {
@@ -48,7 +51,7 @@ export function SettingsDialog({
 }: {
   state: AppState;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: () => void | Promise<void>;
 }) {
   const [config, setConfig] = useState<Config>(structuredClone(state.config)),
     [error, setError] = useState(""),
@@ -76,7 +79,7 @@ export function SettingsDialog({
             .filter(Boolean),
         },
       });
-      onSaved();
+      await onSaved();
       onClose();
     } catch (e) {
       setError((e as Error).message);
@@ -230,6 +233,22 @@ export function SettingsDialog({
             />
             <button onClick={() => void saveKey()} disabled={key.length < 8}>
               Save key
+            </button>
+            <button
+              onClick={() =>
+                void api("key", { env: provider, remove: true })
+                  .then(() => {
+                    setKey("");
+                    setKeySaved(false);
+                    onSaved();
+                    setError(
+                      "Credential removed from this session / credential store. Environment variables must be removed in your terminal separately.",
+                    );
+                  })
+                  .catch((e) => setError(e.message))
+              }
+            >
+              Remove key
             </button>
           </div>
           {keySaved && (

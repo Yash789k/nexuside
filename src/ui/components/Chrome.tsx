@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Plus,
   FileCode2,
@@ -88,6 +89,8 @@ export function Sidebar({
   mobile: boolean;
   onClose: () => void;
 }) {
+  const [recentLimit, setRecentLimit] = useState(30),
+    [runQuery, setRunQuery] = useState("");
   return (
     <aside className={`sidebar ${mobile ? "mobile-open" : ""}`}>
       <button className="new-task" onClick={onNew}>
@@ -96,6 +99,9 @@ export function Sidebar({
       </button>
       <div className="sidebar-section files-section">
         <span className="section-label">Workspace</span>
+        {state && state.files.length > 100 && (
+          <small>First 100 files. Open IDE for the full index.</small>
+        )}
         <div className="file-list">
           {state?.files.length ? (
             state.files.slice(0, 100).map((file) => (
@@ -116,22 +122,42 @@ export function Sidebar({
       </div>
       <div className="sidebar-section recent-section">
         <span className="section-label">Recent runs</span>
+        <input
+          className="run-filter"
+          aria-label="Filter run history"
+          placeholder="Find a run…"
+          value={runQuery}
+          onChange={(e) => setRunQuery(e.target.value)}
+        />
         <div className="recent-list">
-          {state?.runs.slice(0, 30).map((run) => (
-            <button
-              className={`run-row ${selected === run.id ? "active" : ""}`}
-              key={run.id}
-              onClick={() => onSelect(run.id)}
-            >
-              <span className={`dot ${run.status}`} />
-              <span>
-                {run.prompt}
-                <small>{run.status.replaceAll("_", " ")}</small>
-              </span>
-            </button>
-          ))}
+          {state?.runs
+            .filter((r) =>
+              r.prompt.toLowerCase().includes(runQuery.toLowerCase()),
+            )
+            .slice(0, recentLimit)
+            .map((run) => (
+              <button
+                className={`run-row ${selected === run.id ? "active" : ""}`}
+                key={run.id}
+                onClick={() => onSelect(run.id)}
+              >
+                <span className={`dot ${run.status}`} />
+                <span>
+                  {run.prompt}
+                  <small>{run.status.replaceAll("_", " ")}</small>
+                </span>
+              </button>
+            ))}
         </div>
       </div>
+      {state && state.runs.length > recentLimit && (
+        <button
+          className="quiet-button"
+          onClick={() => setRecentLimit((n) => n + 30)}
+        >
+          Show more runs ({state.runs.length})
+        </button>
+      )}
       <nav className="sidebar-nav">
         <button onClick={onMetrics}>
           <BarChart3 size={18} />
@@ -159,7 +185,7 @@ export function StatusBar({ state }: { state?: AppState }) {
         <b className="dot" />
         Local workspace
       </span>
-      <span>NexusIDE {state?.version ?? "0.1.0"}</span>
+      <span>NexusIDE {state?.version ?? "0.2.0"}</span>
     </footer>
   );
 }

@@ -97,8 +97,8 @@ export class Store {
     await appendFile(dest, JSON.stringify(event) + "\n", { mode: 0o600 });
     return event;
   }
-  async verify(id: string) {
-    const events = await this.events(id);
+  async verify(id: string, supplied?: TraceEvent[]) {
+    const events = supplied ?? (await this.events(id));
     if (!events.length) return false;
     let prev = "0".repeat(64);
     for (let i = 0; i < events.length; i++) {

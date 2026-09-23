@@ -12,11 +12,22 @@ export interface AppState {
   config: Config;
   configPath: string;
   files: string[];
+  index: {
+    files: string[];
+    directories: string[];
+    limited: boolean;
+    limit: number;
+    depth: number;
+  };
   runs: Pick<Run, "id" | "prompt" | "status" | "createdAt" | "modelId">[];
   version: string;
   credentialStorage: string;
 }
-export type RunView = Run & { events: TraceEvent[]; evaluation: EvalResult };
+export type RunView = Run & {
+  events: TraceEvent[];
+  evaluation: EvalResult;
+  operationError?: string;
+};
 declare global {
   interface Window {
     acquireVsCodeApi?: () => { postMessage: (message: unknown) => void };
@@ -76,4 +87,26 @@ export async function api<T = any>(
   const result = await r.json();
   if (!r.ok) throw new Error(result.error ?? "Request failed");
   return result;
+}
+
+export function recoveryId(workspace: string) {
+  const supplied = document.querySelector<HTMLMetaElement>(
+    'meta[name="nexus-session"]',
+  )?.content;
+  const key = `nexus-editor:${workspace}`;
+  let id = supplied ?? sessionStorage.getItem(key);
+  if (!id) {
+    id = crypto.randomUUID();
+    sessionStorage.setItem(key, id);
+  }
+  return id;
+}
+export function cacheRecovery(workspace: string, value: unknown) {
+  // Webview state also protects edits while the host recreates its webview document.
+  const host = vscode as any;
+  if (host?.setState) host.setState({ workspace, recovery: value });
+}
+export function cachedRecovery(workspace: string) {
+  const value = (vscode as any)?.getState?.();
+  return value?.workspace === workspace ? value.recovery : undefined;
 }

@@ -90,6 +90,7 @@ export interface Change {
   applied?: boolean;
 }
 export interface PendingAction {
+  revision?: string;
   call: ToolCall;
   kind: "edits" | "tests" | "commit" | "browser";
   title: string;

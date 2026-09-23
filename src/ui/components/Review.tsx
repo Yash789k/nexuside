@@ -18,11 +18,14 @@ export function DiffFile({
   change: Change;
   initialOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(initialOpen);
+  const [open, setOpen] = useState(initialOpen),
+    [page, setPage] = useState(0);
   const lines = change.diff.split("\n").slice(4);
   const additions = lines.filter((l) => l.startsWith("+")).length,
     removed = lines.filter((l) => l.startsWith("-")).length;
   let line = 0;
+  const start = page * 500,
+    end = Math.min(lines.length, start + 500);
   return (
     <div className="diff-file">
       <button
@@ -40,6 +43,22 @@ export function DiffFile({
           <i>−{removed}</i>
         </span>
       </button>
+      {open && lines.length > 500 && (
+        <div className="diff-pager">
+          <span>
+            Lines {start + 1}–{end} of {lines.length}
+          </span>
+          <button disabled={!page} onClick={() => setPage((p) => p - 1)}>
+            Previous diff page
+          </button>
+          <button
+            disabled={end >= lines.length}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Next diff page
+          </button>
+        </div>
+      )}
       {open && (
         <pre className="diff-code">
           {lines.map((text, i) => {
@@ -48,6 +67,7 @@ export function DiffFile({
               const match = text.match(/\+(\d+)/);
               line = Number(match?.[1] ?? 0) - 1;
             } else if (!text.startsWith("-")) line++;
+            if (i < start || i >= end) return null;
             return (
               <div
                 key={i}
@@ -188,6 +208,7 @@ export function Overview({ run }: { run: RunView }) {
 }
 export function Trace({ run }: { run: RunView }) {
   const [shot, setShot] = useState<string>();
+  const [limit, setLimit] = useState(100);
   return (
     <div className="trace-view">
       <div className="trace-heading">
@@ -214,7 +235,7 @@ export function Trace({ run }: { run: RunView }) {
           Export JSONL
         </button>
       </div>
-      {run.events.map((e) => (
+      {run.events.slice(0, limit).map((e) => (
         <details className="trace-event" key={e.seq}>
           <summary>
             <span>{String(e.seq).padStart(2, "0")}</span>
@@ -235,6 +256,11 @@ export function Trace({ run }: { run: RunView }) {
           )}
         </details>
       ))}
+      {run.events.length > limit && (
+        <button onClick={() => setLimit((n) => n + 100)}>
+          Show more events ({limit} of {run.events.length})
+        </button>
+      )}
       {shot && (
         <div className="browser-evidence">
           <button onClick={() => setShot(undefined)}>Close screenshot</button>
