@@ -37,6 +37,8 @@ let service: Service | undefined;
 let project: DesktopProject | undefined;
 let recent: DesktopProject[] = [];
 let vault: CredentialVault;
+let rememberCredentials = false;
+let storageChanging = false;
 let transition = false;
 let quitting = false;
 let closeRequested = false;
@@ -62,7 +64,7 @@ const credentialLabel = () =>
   vault.warning ||
   (vault.protectedStorage
     ? "Encrypted on this device using the system credential store"
-    : "Session memory — no protected credential store available");
+    : "Session memory — keys are forgotten when the app closes");
 async function credentialOperation<T>(operation: Promise<T>): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;
   try {
@@ -84,11 +86,19 @@ async function credentialOperation<T>(operation: Promise<T>): Promise<T> {
     clearTimeout(timer!);
   }
 }
+async function protectedStorageAvailable() {
+  return (
+    (await credentialOperation(safeStorage.isAsyncEncryptionAvailable())) &&
+    (process.platform !== "linux" ||
+      safeStorage.getSelectedStorageBackend() !== "basic_text")
+  );
+}
 const snapshot = (): DesktopState => ({
   version,
   project,
   recent,
   credentialStorage: credentialLabel(),
+  rememberCredentials,
 });
 function trusted(event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent) {
   if (
@@ -166,7 +176,7 @@ async function mayLeave() {
   return true;
 }
 async function changed() {
-  await writeJson(stateFile, { recent });
+  await writeJson(stateFile, { recent, rememberCredentials });
   window.setTitle(project ? `${project.name} — NexusIDE` : "NexusIDE");
   window.webContents.send("nexus:state-changed", snapshot());
   return snapshot();
@@ -236,7 +246,10 @@ async function showError(error: unknown) {
 }
 async function boot() {
   await mkdir(profile, { recursive: true });
-  const stored = await readJson<{ recent: DesktopProject[] }>(stateFile, {
+  const stored = await readJson<{
+    recent: DesktopProject[];
+    rememberCredentials?: boolean;
+  }>(stateFile, {
     recent: [],
   });
   recent = Array.isArray(stored.recent)
@@ -249,12 +262,11 @@ async function boot() {
         )
         .slice(0, 12)
     : [];
+  // Never touch Keychain at first launch. Access is explicitly opted into in Settings.
   const protectedStorage =
-    (await credentialOperation(safeStorage.isAsyncEncryptionAvailable()).catch(
-      () => false,
-    )) &&
-    (process.platform !== "linux" ||
-      safeStorage.getSelectedStorageBackend() !== "basic_text");
+    stored.rememberCredentials === true &&
+    (await protectedStorageAvailable().catch(() => false));
+  rememberCredentials = protectedStorage;
   vault = new CredentialVault(
     path.join(profile, "credentials.json"),
     protectedStorage,
@@ -307,6 +319,28 @@ async function boot() {
     }),
   );
   handler("nexus:state", snapshot);
+  handler("nexus:remember-credentials", async (enabled: unknown) => {
+    if (typeof enabled !== "boolean")
+      throw new Error("Invalid storage preference");
+    if (storageChanging || transition)
+      throw new Error("Wait for the current action to finish");
+    storageChanging = true;
+    try {
+      if (enabled) {
+        if (!(await protectedStorageAvailable()))
+          throw new Error(
+            "Protected storage is unavailable. Keep using session keys, or unlock your system credential store and try again.",
+          );
+        vault.protectedStorage = true;
+      } else {
+        await vault.useSessionOnly();
+      }
+      rememberCredentials = enabled;
+      return await changed();
+    } finally {
+      storageChanging = false;
+    }
+  });
   handler("nexus:open", openProject);
   handler("nexus:downloads", () => shell.openExternal(downloads));
   handler("nexus:demo", () =>
@@ -358,13 +392,15 @@ async function boot() {
       ].includes(action)
     )
       throw new Error("Wait for the project transition to finish");
-    const job = service
-      .request(action, data)
-      .then((value: any) =>
-        action === "state"
-          ? { ...value, credentialStorage: credentialLabel() }
-          : value,
-      );
+    const job = service.request(action, data).then((value: any) =>
+      action === "state"
+        ? {
+            ...value,
+            credentialStorage: credentialLabel(),
+            rememberCredentials,
+          }
+        : value,
+    );
     pending.add(job);
     void job.finally(() => pending.delete(job)).catch(() => {});
     return job;

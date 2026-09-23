@@ -163,6 +163,25 @@ try {
   await page
     .getByLabel("Credential provider")
     .selectOption("OPENROUTER_API_KEY");
+  const remember = page.getByRole("checkbox", {
+    name: "Remember provider keys on this device",
+  });
+  await expect(remember).not.toBeChecked();
+  if (process.platform === "win32") {
+    await remember.check();
+    await expect(remember).toBeChecked();
+  } else {
+    // Exercise a denied/unavailable OS store at its boundary without opening
+    // password prompts on the developer's Mac or a headless Linux runner.
+    await app.evaluate(({ safeStorage }) => {
+      safeStorage.isAsyncEncryptionAvailable = async () => false;
+    });
+    await remember.check();
+    await expect(
+      page.getByText(/Protected storage is unavailable/),
+    ).toBeVisible();
+    await expect(remember).not.toBeChecked();
+  }
   await page
     .getByLabel("Provider API key")
     .fill("fixture-desktop-key-never-sent");
@@ -208,7 +227,7 @@ try {
     .click();
   console.log("Desktop phase passed");
   checks.push(
-    "Settings, credential restoration after restart (or explicit session fallback), removal, workspace traversal denial",
+    "Session keys by default; opt-in persistence on Windows or denied-store fallback on macOS/Linux; restart, removal and traversal denial",
   );
   await page.getByRole("button", { name: "Projects", exact: true }).click();
   await page

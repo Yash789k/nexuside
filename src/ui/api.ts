@@ -23,6 +23,7 @@ export interface AppState {
   runs: Pick<Run, "id" | "prompt" | "status" | "createdAt" | "modelId">[];
   version: string;
   credentialStorage: string;
+  rememberCredentials?: boolean;
 }
 export type RunView = Run & {
   events: TraceEvent[];

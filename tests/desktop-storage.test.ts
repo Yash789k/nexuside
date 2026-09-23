@@ -23,6 +23,16 @@ test("desktop vault serializes concurrent updates, restores encrypted entries an
     await next.load();
     assert.equal(await next.get("OPENROUTER_API_KEY"), "fixture-router-secret");
     assert.equal(await next.get("OPENAI_API_KEY"), "fixture-openai-secret");
+    await next.set("OPENAI_API_KEY", "fixture-session-after-disable");
+    await next.useSessionOnly();
+    assert.equal(
+      await next.get("OPENAI_API_KEY"),
+      "fixture-session-after-disable",
+    );
+    assert.deepEqual(JSON.parse(await readFile(file, "utf8")), {});
+    // Restore a persisted key to keep the independent removal check below.
+    next.protectedStorage = true;
+    await next.set("OPENAI_API_KEY", "fixture-openai-secret");
     await next.set("OPENROUTER_API_KEY", "");
     const final = new CredentialVault(file, true, encrypt, decrypt);
     await final.load();

@@ -8,6 +8,8 @@ const bridge: DesktopBridge = {
   createDemo: () => ipcRenderer.invoke("nexus:demo"),
   closeProject: () => ipcRenderer.invoke("nexus:close-project"),
   openDownloads: () => ipcRenderer.invoke("nexus:downloads"),
+  rememberCredentials: (enabled) =>
+    ipcRenderer.invoke("nexus:remember-credentials", enabled),
   onState: (fn) => {
     const listener = (_event: unknown, state: Parameters<typeof fn>[0]) =>
       fn(state);

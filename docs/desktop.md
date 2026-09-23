@@ -37,6 +37,8 @@ You need only one desktop installer. The macOS ZIP contains the same app as the 
 
 For a no-key test, choose **Try an offline walkthrough** on the welcome screen, then **Try the offline walkthrough** in Agent mode. It proposes a Fibonacci module and three Node tests. Both edits and tests require your review. This deterministic demonstration is not a general-purpose offline AI model.
 
+Keys use session memory by default, so first launch does not request Keychain access. To keep keys across restarts, explicitly enable **Remember provider keys on this device** in Settings, then save each key. The OS may request its credential-store password; on macOS this is the login keychain password, normally your Mac login password. Choose Deny to keep using session keys. Disabling the option removes saved encrypted keys from disk. Ad-hoc Mac signatures may cause another access prompt after an update; a stable Developer ID signature is a future distribution prerequisite for consistent Keychain identity.
+
 ## What is included and what is optional?
 
 - Included: application window, editor, agent engine, provider adapters, local persistence, protected credential integration and Node runtime for approved `node --test` execution.
@@ -54,7 +56,7 @@ Projects stay in their existing folders. Runs, traces and editor recovery live i
 - Windows: `%APPDATA%/NexusIDE`
 - Linux: `$XDG_CONFIG_HOME/NexusIDE`, normally `~/.config/NexusIDE`
 
-Provider keys are encrypted using Electron's OS-backed `safeStorage` when protected encryption is available. If Linux has no protected credential store, keys remain in memory for the session; the Settings screen identifies this. Keys are never written into project files. No actual provider key is bundled.
+Provider keys remain in session memory unless you explicitly enable protected storage. When enabled and available, they are encrypted using Electron's OS-backed `safeStorage`. If protected storage is unavailable, the app continues with session keys and identifies this in Settings. Keys are never written into project files. No actual provider key is bundled.
 
 When leaving a dirty project, choose **Save All**, **Keep for recovery**, or **Cancel**. The app waits for acknowledged recovery before closing. Unsaved content/layout can be restored when reopening from Recent projects; undo history restarts. Active agent operations are cancelled on exit; pending approvals remain persisted. As with the other surfaces, physical power loss before an acknowledged save is outside this guarantee.
 

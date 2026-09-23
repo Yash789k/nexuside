@@ -8,6 +8,7 @@ export interface DesktopState {
   project?: DesktopProject;
   recent: DesktopProject[];
   credentialStorage: string;
+  rememberCredentials: boolean;
 }
 export interface DesktopPreparation {
   dirty: number;
@@ -19,6 +20,7 @@ export interface DesktopBridge {
   createDemo(): Promise<DesktopState>;
   closeProject(): Promise<DesktopState>;
   openDownloads(): Promise<void>;
+  rememberCredentials(enabled: boolean): Promise<DesktopState>;
   onState(fn: (state: DesktopState) => void): () => void;
   onPrepare(fn: (save: boolean) => Promise<DesktopPreparation>): () => void;
 }

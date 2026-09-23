@@ -29,12 +29,24 @@ export class CredentialVault {
   private queue: Promise<unknown> = Promise.resolve();
   constructor(
     private file: string,
-    readonly protectedStorage: boolean,
+    public protectedStorage: boolean,
     private encrypt: (value: string) => Buffer | Promise<Buffer>,
     private decrypt: (value: Buffer) => string | Promise<string>,
   ) {}
   async load() {
     this.entries = await readJson(this.file, {});
+  }
+  useSessionOnly() {
+    const pending = this.queue
+      .catch(() => {})
+      .then(async () => {
+        await writeJson(this.file, {});
+        this.entries = {};
+        this.protectedStorage = false;
+        this.warning = "";
+      });
+    this.queue = pending;
+    return pending;
   }
   async get(env: string) {
     if (this.memory.has(env)) return this.memory.get(env) || undefined;

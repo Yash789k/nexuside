@@ -90,7 +90,7 @@ The offline provider is **a deterministic Fibonacci fixture**, not a language mo
 
 ## Configure providers
 
-In the dashboard, open **Settings**. Enable the models you want and save a provider credential. The desktop app encrypts keys using the system credential store, with an explicit session-only fallback where protected storage is unavailable. In VS Code, keys use `SecretStorage`; the **NexusIDE: Configure Provider Key** command also stores them there. Browser dashboard keys are held in server memory for that session and are never written into project files.
+In the dashboard, open **Settings**. Enable the models you want and save a provider credential. Desktop keys use session memory by default. Explicitly enable **Remember provider keys on this device** before saving keys to encrypt them in the system credential store; this may request OS permission. In VS Code, keys use `SecretStorage`; the **NexusIDE: Configure Provider Key** command also stores them there. Browser dashboard keys are held in server memory for that session and are never written into project files.
 
 The standalone CLI can use existing environment variables `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, and `OPENROUTER_API_KEY`. It does not read `.env` files automatically. To use local Ollama, enable it in Settings, run your Ollama server, and set a tool-capable model ID that you have installed. Cloud calls send the requested prompt and tool-read context to your selected provider.
 

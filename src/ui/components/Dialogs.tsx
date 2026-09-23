@@ -59,6 +59,7 @@ export function SettingsDialog({
     [provider, setProvider] = useState("OPENAI_API_KEY"),
     [key, setKey] = useState(""),
     [keySaved, setKeySaved] = useState(false),
+    [storageBusy, setStorageBusy] = useState(false),
     [domains, setDomains] = useState(state.config.browserDomains.join(", "));
   const update = (index: number, field: string, value: unknown) =>
     setConfig((c) => ({
@@ -199,6 +200,47 @@ export function SettingsDialog({
         </section>
         <section>
           <h3>Provider credential</h3>
+          {window.nexusDesktop && (
+            <>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={state.rememberCredentials ?? false}
+                  disabled={storageBusy}
+                  onChange={(e) => {
+                    const enabled = e.target.checked;
+                    setStorageBusy(true);
+                    setError("");
+                    void window
+                      .nexusDesktop!.rememberCredentials(enabled)
+                      .then(() => onSaved())
+                      .catch((error) =>
+                        setError(
+                          error.message.replace(
+                            /^Error invoking remote method '[^']+': Error: /,
+                            "",
+                          ),
+                        ),
+                      )
+                      .finally(() => setStorageBusy(false));
+                  }}
+                />
+                Remember provider keys on this device
+              </label>
+              <p className="subtle">
+                Optional: your system may ask for its keychain password. Save
+                each key again after enabling. Turning this off removes all
+                saved keys from disk; keys entered this session stay available
+                until you quit.
+              </p>
+              {storageBusy && (
+                <p role="status">
+                  Waiting for the system credential store. You can deny its
+                  prompt to keep using session keys.
+                </p>
+              )}
+            </>
+          )}
           <p className="subtle">
             Storage: {state.credentialStorage}.{" "}
             {state.credentialStorage.startsWith("Session memory")
@@ -233,7 +275,10 @@ export function SettingsDialog({
                 setKeySaved(false);
               }}
             />
-            <button onClick={() => void saveKey()} disabled={key.length < 8}>
+            <button
+              onClick={() => void saveKey()}
+              disabled={key.length < 8 || storageBusy}
+            >
               Save key
             </button>
             <button
