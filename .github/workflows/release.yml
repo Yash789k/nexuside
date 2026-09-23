@@ -64,3 +64,15 @@ jobs:
           else
             gh release create "$GITHUB_REF_NAME" ../nexuside-*.vsix ../nexuside-*.tgz ../SHA256SUMS.txt --verify-tag --title "NexusIDE $GITHUB_REF_NAME" --notes-file CHANGELOG.md
           fi
+          nexus_release_id=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" --jq .id)
+          gh api -H 'Cache-Control: no-cache' "repos/$GITHUB_REPOSITORY/releases/$nexus_release_id/assets?per_page=100" > /tmp/nexus-release-assets.json
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          const { version } = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const assets = JSON.parse(fs.readFileSync('/tmp/nexus-release-assets.json', 'utf8'));
+          for (const name of [`nexuside-${version}.vsix`, `nexuside-${version}.tgz`, 'SHA256SUMS.txt']) {
+            if (!assets.some(a => a.name === name && a.size > 0 && a.state === 'uploaded')) {
+              throw new Error(`Published release is missing ${name}`);
+            }
+          }
+          JS
