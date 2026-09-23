@@ -168,7 +168,7 @@ try {
   });
   await expect(remember).not.toBeChecked();
   if (process.platform === "win32") {
-    await remember.check();
+    await remember.click();
     await expect(remember).toBeChecked();
   } else {
     // Exercise a denied/unavailable OS store at its boundary without opening
@@ -176,7 +176,7 @@ try {
     await app.evaluate(({ safeStorage }) => {
       safeStorage.isAsyncEncryptionAvailable = async () => false;
     });
-    await remember.check();
+    await remember.click();
     await expect(
       page.getByText(/Protected storage is unavailable/),
     ).toBeVisible();
