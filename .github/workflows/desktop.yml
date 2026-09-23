@@ -30,14 +30,31 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Artifact paths
+        id: paths
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `downloads=${path.resolve('../nexuside-desktop-downloads')}\nevidence=${path.resolve('../nexuside-desktop-evidence')}\n`);
+          JS
       - run: npm run check
       - run: npm run test:cli
+      - name: Configure Linux development sandbox
+        if: runner.os == 'Linux'
+        run: |
+          node -e "require('electron')"
+          sudo chown root:root node_modules/electron/dist/chrome-sandbox
+          sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
       - name: Desktop integration
         if: runner.os != 'Linux'
         run: npm run test:desktop
       - name: Desktop integration on Linux
         if: runner.os == 'Linux'
         run: xvfb-run -a npm run test:desktop
+        env:
+          DEBUG: pw:browser
       - name: Package installers
         run: npx electron-builder ${{ matrix.target }} --publish never
       - name: Verify packaged macOS app
@@ -52,24 +69,27 @@ jobs:
         env:
           NEXUS_DESKTOP_EXE: ../nexuside-desktop-downloads/win-unpacked/NexusIDE.exe
           NEXUS_DESKTOP_EVIDENCE: ../nexuside-desktop-evidence/packaged
-      - name: Verify packaged Linux app
+      - name: Install Linux desktop package
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y ../nexuside-desktop-downloads/*.deb
+      - name: Verify installed Linux app
         if: runner.os == 'Linux'
         run: xvfb-run -a npm run test:desktop
         env:
-          NEXUS_DESKTOP_EXE: ../nexuside-desktop-downloads/linux-unpacked/nexuside
+          NEXUS_DESKTOP_EXE: /opt/NexusIDE/nexuside
           NEXUS_DESKTOP_EVIDENCE: ../nexuside-desktop-evidence/packaged
       - uses: actions/upload-artifact@v4
         with:
           name: nexuside-${{ matrix.label }}
           path: |
-            ../nexuside-desktop-downloads/*.dmg
-            ../nexuside-desktop-downloads/*.zip
-            ../nexuside-desktop-downloads/*.exe
-            ../nexuside-desktop-downloads/*.AppImage
-            ../nexuside-desktop-downloads/*.deb
+            ${{ steps.paths.outputs.downloads }}/*.dmg
+            ${{ steps.paths.outputs.downloads }}/*.zip
+            ${{ steps.paths.outputs.downloads }}/*.exe
+            ${{ steps.paths.outputs.downloads }}/*.AppImage
+            ${{ steps.paths.outputs.downloads }}/*.deb
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: desktop-evidence-${{ matrix.label }}
-          path: ../nexuside-desktop-evidence
+          path: ${{ steps.paths.outputs.evidence }}

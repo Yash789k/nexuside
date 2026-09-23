@@ -1,4 +1,5 @@
-import { readFile, writeFile, rename, mkdir } from "node:fs/promises";
+import { readFile, writeFile, unlink, mkdir } from "node:fs/promises";
+import { replaceFile } from "../core/atomic";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 export async function readJson<T>(file: string, fallback: T): Promise<T> {
@@ -15,7 +16,11 @@ export async function writeJson(file: string, value: unknown) {
   await mkdir(path.dirname(file), { recursive: true });
   const temporary = `${file}.${randomUUID()}.tmp`;
   await writeFile(temporary, JSON.stringify(value, null, 2), { mode: 0o600 });
-  await rename(temporary, file);
+  try {
+    await replaceFile(temporary, file);
+  } finally {
+    await unlink(temporary).catch(() => {});
+  }
 }
 export class CredentialVault {
   private entries: Record<string, string> = {};

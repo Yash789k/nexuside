@@ -158,6 +158,27 @@ try {
     "utf8",
   );
   expect(credentials).not.toContain("fixture-desktop-key-never-sent");
+  const protectedStorage = credentials.includes("OPENROUTER_API_KEY");
+  await page
+    .getByRole("button", { name: "Save settings", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Projects", exact: true }).click();
+  await app.close();
+  await launch();
+  await page.getByRole("button", { name: /Project 空間/ }).click();
+  // Verify persisted credentials through the actual Settings status indicator.
+  await page
+    .getByRole("button", { name: "Open settings", exact: true })
+    .click();
+  const codingModel = page
+    .locator("summary")
+    .filter({ hasText: "OpenRouter · Coding" });
+  await expect(codingModel.locator(".dot")).toHaveClass(
+    protectedStorage ? /completed/ : /disabled/,
+  );
+  await page
+    .getByLabel("Credential provider")
+    .selectOption("OPENROUTER_API_KEY");
   await page.getByRole("button", { name: "Remove key", exact: true }).click();
   await expect(
     page.getByText(/Credential removed from this session/),
@@ -166,7 +187,7 @@ try {
     .getByRole("button", { name: "Save settings", exact: true })
     .click();
   checks.push(
-    "Settings and real OS credential path (or explicit session fallback), removal, workspace traversal denial",
+    "Settings, credential restoration after restart (or explicit session fallback), removal, workspace traversal denial",
   );
   await page.getByRole("button", { name: "Projects", exact: true }).click();
   await page

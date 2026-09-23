@@ -14,6 +14,7 @@ import { randomUUID, createHash } from "node:crypto";
 import { createTwoFilesPatch } from "diff";
 import type { Change } from "./types";
 import { fileTransaction } from "./file-lock";
+import { replaceFile } from "./atomic";
 const ignored = new Set([
   "node_modules",
   ".git",
@@ -386,7 +387,7 @@ export class Workspace {
       } catch (e) {
         if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
       }
-      await rename(tmp, dest);
+      await replaceFile(tmp, dest);
     } finally {
       await unlink(tmp).catch(() => {});
     }
