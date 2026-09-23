@@ -881,8 +881,9 @@ export function IDE({
             Autosave after 1.5 s idle
           </label>
           <p className="subtle">
-            Browser editing: syntax, search and document commands. Full language
-            services, terminal and debugging are available in your VS Code host.
+            {window.nexusDesktop
+              ? "Syntax highlighting, search and document commands are included. Language services, an interactive terminal and debugging are not yet included in the desktop app."
+              : "Browser editing: syntax, search and document commands. Full language services, terminal and debugging are available in your VS Code host."}
           </p>
         </aside>
       </div>
