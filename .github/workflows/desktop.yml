@@ -60,7 +60,9 @@ jobs:
         run: npx electron-builder ${{ matrix.target }} --publish never
       - name: Verify packaged macOS app
         if: runner.os == 'macOS'
-        run: npm run test:desktop
+        run: |
+          codesign --verify --deep --strict --verbose=2 ../nexuside-desktop-downloads/mac-arm64/NexusIDE.app
+          npm run test:desktop
         env:
           NEXUS_DESKTOP_EXE: ../nexuside-desktop-downloads/mac-arm64/NexusIDE.app/Contents/MacOS/NexusIDE
           NEXUS_DESKTOP_EVIDENCE: ../nexuside-desktop-evidence/packaged
