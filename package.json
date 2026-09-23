@@ -1,0 +1,120 @@
+{
+  "name": "nexuside",
+  "displayName": "NexusIDE",
+  "version": "0.1.0",
+  "description": "Local-first hybrid agentic IDE, model router, and cross-platform CLI.",
+  "publisher": "nexuside-local",
+  "license": "MIT",
+  "private": false,
+  "type": "module",
+  "main": "./dist/extension.cjs",
+  "bin": {
+    "nexus": "./dist/cli.cjs",
+    "nexuside": "./dist/cli.cjs"
+  },
+  "engines": {
+    "node": ">=22",
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "Machine Learning",
+    "Other"
+  ],
+  "keywords": [
+    "ai",
+    "agent",
+    "ide",
+    "cli",
+    "router"
+  ],
+  "files": [
+    "dist",
+    "sandbox",
+    "README.md",
+    "LICENSE",
+    "docs",
+    "media"
+  ],
+  "activationEvents": [
+    "onCommand:nexuside.open",
+    "onCommand:nexuside.complete"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "NexusIDE requires a trusted workspace before accessing files or running tools."
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "nexuside.open",
+        "title": "NexusIDE: Open Workspace"
+      },
+      {
+        "command": "nexuside.complete",
+        "title": "NexusIDE: Suggest Inline Completion"
+      },
+      {
+        "command": "nexuside.edit",
+        "title": "NexusIDE: Edit Selection"
+      },
+      {
+        "command": "nexuside.configure",
+        "title": "NexusIDE: Configure Provider Key"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "nexuside.complete",
+        "key": "ctrl+alt+space",
+        "mac": "cmd+alt+space",
+        "when": "editorTextFocus"
+      }
+    ]
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "test:e2e": "playwright test",
+    "check": "npm run typecheck && npm test && npm run build",
+    "package:vsix": "vsce package --no-dependencies --allow-missing-repository --skip-license --out ../nexuside-0.1.0.vsix",
+    "package:cli": "npm pack --pack-destination ..",
+    "release:local": "npm run check && npm run package:vsix && npm run package:cli",
+    "test:extension": "node scripts/test-extension.mjs",
+    "test:sandbox": "tsx --test tests/sandbox.integration.ts",
+    "sandbox-build": "docker build -t nexuside-sandbox:0.1.0 sandbox"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.58.2",
+    "@types/diff": "^7.0.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/vscode": "^1.96.0",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^3.0.0",
+    "commander": "^14.0.0",
+    "diff": "^8.0.0",
+    "esbuild": "^0.25.0",
+    "lucide-react": "^0.468.0",
+    "prettier": "^3.9.9",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vite": "^6.1.0",
+    "zod": "^3.24.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Yash789k/nexuside.git"
+  },
+  "homepage": "https://github.com/Yash789k/nexuside#readme",
+  "bugs": {
+    "url": "https://github.com/Yash789k/nexuside/issues"
+  },
+  "icon": "media/icon.png"
+}

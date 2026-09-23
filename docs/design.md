@@ -1,0 +1,5 @@
+# Design system
+
+The generated primary screen in design-reference.png defines the dashboard. Core tokens: background #101114; sidebar #151619; border #282a30; text #eceef2; secondary #979da9; mint #b9f4cf. Typography: system sans, 14px body and controls, 26px page titles, monospace code 13px/1.6. Flat panels with fine dividers, 6px button radii and 12px composer radius. Desktop header 60px; sidebar 230px; activity inspector 320px; flexible central review area. At widths below 1100px inspector moves below content; below 700px workspace rail becomes a collapsible menu. Keyboard focus is a visible mint outline.
+
+Primary components: Header, Sidebar, TaskWorkspace, Composer, ReviewPanel, ActivityPanel, SettingsDialog, MetricsView. Every displayed run, cost, tool event and test result comes from the engine. The empty state invites a new task or an explicitly labeled offline demo. Navigation: Overview, Changes, Trace, Evaluations. Required extra states follow this same design: provider setup, approval/rejection, failures, file editor, attachment picker and terminal results. No invented success or cost metrics.
