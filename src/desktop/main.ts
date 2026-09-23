@@ -39,6 +39,16 @@ let recent: DesktopProject[] = [];
 let vault: CredentialVault;
 let transition = false;
 let quitting = false;
+let closeRequested = false;
+function finishTransition() {
+  transition = false;
+  if (closeRequested && !quitting) {
+    closeRequested = false;
+    setImmediate(() => {
+      if (!window.isDestroyed()) window.close();
+    });
+  }
+}
 let preparing:
   | {
       id: string;
@@ -191,7 +201,7 @@ async function switchProject(select: () => Promise<string | undefined>) {
     if (!(await mayLeave())) return snapshot();
     return await enter(root);
   } finally {
-    transition = false;
+    finishTransition();
   }
 }
 async function openProject(recentPath?: unknown) {
@@ -324,7 +334,7 @@ async function boot() {
       }
       return snapshot();
     } finally {
-      transition = false;
+      finishTransition();
     }
   });
   handler("nexus:request", (action: unknown, data: unknown) => {
@@ -411,7 +421,10 @@ async function boot() {
   window.on("close", (event) => {
     if (quitting) return;
     event.preventDefault();
-    if (transition) return;
+    if (transition) {
+      closeRequested = true;
+      return;
+    }
     transition = true;
     void mayLeave()
       .then((allowed) => {
@@ -422,9 +435,7 @@ async function boot() {
         }
       })
       .catch(showError)
-      .finally(() => {
-        transition = false;
-      });
+      .finally(finishTransition);
   });
   window.once("ready-to-show", () => window.show());
   await window.loadURL(pathToFileURL(indexFile).href);

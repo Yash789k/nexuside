@@ -123,6 +123,9 @@ try {
   await expect(
     page.getByRole("button", { name: "Open project folder" }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Open project folder" }),
+  ).toBeVisible();
   await app.close();
   await launch();
   await page.getByRole("button", { name: /Project 空間/ }).click();
@@ -173,6 +176,9 @@ try {
     .getByRole("button", { name: "Save settings", exact: true })
     .click();
   await page.getByRole("button", { name: "Projects", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Open project folder" }),
+  ).toBeVisible();
   await app.close();
   await launch();
   await page.getByRole("button", { name: /Project 空間/ }).click();
@@ -242,6 +248,23 @@ try {
     ),
   ).toBe(true);
   expect(errors).toEqual([]);
+  // Regression: quit while the project switch is still persisting its state.
+  // Delay only the filesystem boundary, retaining the actual desktop lifecycle.
+  await app.evaluate(() => {
+    const fs = process.getBuiltinModule("fs/promises");
+    const rename = fs.rename;
+    fs.rename = async (source, destination) => {
+      if (String(destination).endsWith("desktop.json"))
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      return rename(source, destination);
+    };
+  });
+  await page.getByRole("button", { name: "Projects", exact: true }).click();
+  await app.close();
+  app = undefined;
+  checks.push(
+    "Quit during a delayed project transition finishes without hanging or discarding recovery",
+  );
   await writeFile(
     path.join(evidence, "desktop-verification.json"),
     JSON.stringify(
