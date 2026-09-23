@@ -8,6 +8,7 @@ import { Workspace } from "../src/core/workspace";
 import { Engine } from "../src/core/engine";
 import { defaults } from "../src/core/config";
 import { git } from "../src/core/process";
+import { runTests } from "../src/core/sandbox";
 const fixture = async () => {
   const root = await mkdtemp(path.join(tmpdir(), "nexus-recovery-"));
   return {
@@ -16,6 +17,28 @@ const fixture = async () => {
     cleanup: () => rm(root, { recursive: true, force: true }),
   };
 };
+test("approved host npm target executes through the installed Node runtime on every platform", async () => {
+  const f = await fixture();
+  try {
+    await writeFile(
+      path.join(f.root, "package.json"),
+      JSON.stringify({
+        name: "nexus-npm-fixture",
+        version: "1.0.0",
+        scripts: { test: "node --test" },
+      }),
+    );
+    await writeFile(
+      path.join(f.root, "smoke.test.cjs"),
+      "require('node:test')('npm target works', () => require('node:assert/strict').equal(2 + 2, 4));",
+    );
+    const result = await runTests(f.workspace, "npm", "host");
+    assert.equal(result.exitCode, 0, result.output);
+    assert.match(result.output, /npm target works/);
+  } finally {
+    await f.cleanup();
+  }
+});
 test("a second engine can cancel an in-flight provider call without the first resurrecting the run", async () => {
   const f = await fixture();
   let arrived!: () => void;

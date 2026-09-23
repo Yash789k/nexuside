@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, writeFile, rm, chmod } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, rm, chmod, lstat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
@@ -56,14 +56,30 @@ export async function runTests(
     let executable = command[0],
       args = command.slice(1);
     if (process.platform === "win32" && target === "npm") {
-      executable = process.execPath;
-      args = [
-        path.join(
-          path.dirname(process.execPath),
+      // In the extension host process.execPath is Code.exe, not node.exe.
+      // Resolve npm from PATH and invoke its JS entry without a command shell.
+      const located = await execFile("where.exe", ["npm.cmd"], { signal });
+      let entry: string | undefined;
+      for (const shim of located.output.trim().split(/\r?\n/)) {
+        const candidate = path.join(
+          path.dirname(shim),
           "node_modules/npm/bin/npm-cli.js",
-        ),
-        "test",
-      ];
+        );
+        if (
+          await lstat(candidate)
+            .then((s) => s.isFile())
+            .catch(() => false)
+        ) {
+          entry = candidate;
+          break;
+        }
+      }
+      if (!entry)
+        throw new Error(
+          "npm was not found on PATH. Install Node.js 22 or later and restart VS Code.",
+        );
+      executable = "node";
+      args = [entry, "test"];
     }
     if (process.platform === "win32" && target === "pytest")
       executable = "python";
