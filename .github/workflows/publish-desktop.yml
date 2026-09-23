@@ -1,0 +1,79 @@
+name: Upload verified desktop installers
+on:
+  push:
+    branches: [codex/nexuside-artifact-publish]
+    paths: [.github/workflows/publish-desktop.yml]
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Successful Desktop installers run ID
+        required: true
+        type: string
+      release_tag:
+        description: Existing draft release tag with SHA256SUMS.txt
+        required: true
+        type: string
+permissions:
+  actions: read
+  contents: write
+jobs:
+  upload:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      SOURCE_RUN: ${{ inputs.source_run_id }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+    steps:
+      - name: Verify source and draft destination
+        run: |
+          [[ "$SOURCE_RUN" =~ ^[0-9]+$ ]]
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN" > run.json
+          gh release view "$RELEASE_TAG" --json isDraft,targetCommitish > release.json
+          python3 - <<'PY'
+          import json
+          run=json.load(open('run.json'))
+          release=json.load(open('release.json'))
+          assert run['name']=='Desktop installers'
+          assert run['status']=='completed' and run['conclusion']=='success'
+          assert release['isDraft'], 'Published releases must never be overwritten'
+          assert release['targetCommitish']==run['head_sha'], 'Source commit mismatch'
+          PY
+          gh release download "$RELEASE_TAG" --pattern SHA256SUMS.txt --dir checksums
+      - uses: actions/download-artifact@v4
+        with:
+          name: nexuside-windows-x64
+          path: installers/windows
+          run-id: ${{ inputs.source_run_id }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: nexuside-linux-x64
+          path: installers/linux
+          run-id: ${{ inputs.source_run_id }}
+          github-token: ${{ github.token }}
+      - name: Verify bytes and upload only to the draft
+        run: |
+          python3 - <<'PY'
+          import hashlib, pathlib, shutil, subprocess, os, json
+          target=pathlib.Path('verified'); target.mkdir()
+          version=os.environ['RELEASE_TAG'][1:]
+          mappings=[('windows','exe','win-x64.exe'),('linux','deb','linux-x64.deb'),('linux','AppImage','linux-x64.AppImage')]
+          expected=dict(line.strip().split('  ',1)[::-1] for line in pathlib.Path('checksums/SHA256SUMS.txt').read_text().splitlines())
+          assets=[]
+          for platform, extension, suffix in mappings:
+              source=list(pathlib.Path('installers',platform).glob('*.'+extension))
+              assert len(source)==1
+              dest=target/f'NexusIDE-{version}-{suffix}'
+              shutil.copyfile(source[0],dest)
+              with dest.open('rb') as stream: digest=hashlib.file_digest(stream,'sha256').hexdigest()
+              assert expected[dest.name]==digest, f'Checksum mismatch: {dest.name}'
+              assets.append(str(dest))
+          release=json.loads(subprocess.check_output(['gh','release','view',os.environ['RELEASE_TAG'],'--json','isDraft']))
+          assert release['isDraft'], 'Destination was published while checks were running'
+          subprocess.run(['gh','release','upload',os.environ['RELEASE_TAG'],'--clobber',*assets],check=True)
+          print('Uploaded three verified installer files to the draft release')
+          PY
