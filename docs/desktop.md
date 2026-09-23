@@ -15,6 +15,18 @@ Download from [GitHub Releases](https://github.com/Yash789k/nexuside/releases/la
 
 The first desktop packages are not Developer ID signed/notarized or Windows Authenticode signed. macOS/Windows may display an unidentified-publisher warning. Follow the OS's normal explicit first-launch approval after verifying the release source; do not disable Gatekeeper, antivirus or system-wide security settings. No Intel Mac installer is promised unless listed in the release assets. Updates are manual through **Help → Downloads and updates**; no automatic update service is advertised.
 
+On macOS, first try opening NexusIDE from Applications. If macOS blocks this unnotarized build, use **System Settings → Privacy & Security → Open Anyway**, then confirm Open, after checking that you downloaded this release. See [Apple's first-launch instructions](https://support.apple.com/en-us/102445). Managed computers may disallow this exception.
+
+On Debian/Ubuntu, prefer the DEB package. From the download folder:
+
+```sh
+sudo apt install ./NexusIDE-0.3.0-linux-x64.deb
+```
+
+Then launch NexusIDE from the applications menu. The DEB installs the Chromium sandbox helper and the applicable AppArmor profile. The portable AppImage needs FUSE and an OS configuration that permits Chromium's sandbox; recent Ubuntu policies can prevent it from starting. Use the DEB in that case. Do not launch with `--no-sandbox`. AppImage launch is not covered by the DEB installation test.
+
+You need only one desktop installer. The macOS ZIP contains the same app as the DMG. The `.vsix`, `.tgz`, and source archives are optional downloads for VS Code, terminal use, and development respectively; they are not desktop installers.
+
 ## First session
 
 1. Launch NexusIDE and select **Open project folder**. Choose a project you trust.

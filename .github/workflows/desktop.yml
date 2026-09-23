@@ -64,11 +64,21 @@ jobs:
         env:
           NEXUS_DESKTOP_EXE: ../nexuside-desktop-downloads/mac-arm64/NexusIDE.app/Contents/MacOS/NexusIDE
           NEXUS_DESKTOP_EVIDENCE: ../nexuside-desktop-evidence/packaged
-      - name: Verify packaged Windows app
+      - name: Install Windows desktop package
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem ../nexuside-desktop-downloads/*.exe | Select-Object -First 1).FullName
+          $installDir = Join-Path $env:RUNNER_TEMP 'nexuside-installed'
+          $result = Start-Process -FilePath $installer -ArgumentList '/S', "/D=$installDir" -Wait -PassThru
+          if ($result.ExitCode -ne 0) { throw "Installer exited with $($result.ExitCode)" }
+          $executable = Join-Path $installDir 'NexusIDE.exe'
+          if (!(Test-Path $executable)) { throw "Installed executable is missing" }
+          "NEXUS_DESKTOP_EXE=$executable" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Verify installed Windows app
         if: runner.os == 'Windows'
         run: npm run test:desktop
         env:
-          NEXUS_DESKTOP_EXE: ../nexuside-desktop-downloads/win-unpacked/NexusIDE.exe
           NEXUS_DESKTOP_EVIDENCE: ../nexuside-desktop-evidence/packaged
       - name: Install Linux desktop package
         if: runner.os == 'Linux'

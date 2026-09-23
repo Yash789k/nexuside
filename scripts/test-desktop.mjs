@@ -65,10 +65,11 @@ async function chooseFolder(folder) {
 }
 async function messageResponse(response) {
   await app.evaluate(({ dialog }, value) => {
-    dialog.showMessageBox = async () => ({
-      response: value,
-      checkboxChecked: false,
-    });
+    globalThis.nexusTestDialogResponse = undefined;
+    dialog.showMessageBox = async () => {
+      globalThis.nexusTestDialogResponse = value;
+      return { response: value, checkboxChecked: false };
+    };
   }, response);
 }
 try {
@@ -117,12 +118,15 @@ try {
   );
   await messageResponse(2);
   await page.getByRole("button", { name: "Projects", exact: true }).click();
+  await expect
+    .poll(() => app.evaluate(() => globalThis.nexusTestDialogResponse))
+    .toBe(2);
+  await expect(
+    page.getByRole("button", { name: "Projects", exact: true }),
+  ).toBeEnabled();
   await expect(editor).toHaveCount(2);
   await messageResponse(1);
   await page.getByRole("button", { name: "Projects", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "Open project folder" }),
-  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Open project folder" }),
   ).toBeVisible();

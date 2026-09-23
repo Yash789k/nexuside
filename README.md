@@ -1,6 +1,6 @@
 # NexusIDE
 
-A local-first AI coding workspace with a VS Code extension, a browser dashboard, and a CLI for PowerShell, macOS, and Linux. Use IDE mode for focused help or Agent mode to plan, inspect files, propose edits, review changes, and verify the result.
+A local-first AI coding workspace with a standalone desktop app, a VS Code extension, a browser dashboard, and a CLI for PowerShell, macOS, and Linux. Use IDE mode for focused help or Agent mode to plan, inspect files, propose edits, review changes, and verify the result.
 
 ![NexusIDE review workspace](docs/dashboard.png)
 
@@ -90,13 +90,13 @@ The offline provider is **a deterministic Fibonacci fixture**, not a language mo
 
 ## Configure providers
 
-In the dashboard, open **Settings**. Enable the models you want and save a provider credential. In VS Code, keys use `SecretStorage`; the **NexusIDE: Configure Provider Key** command also stores them there. Browser dashboard keys are held in server memory for that session and are never written into project files.
+In the dashboard, open **Settings**. Enable the models you want and save a provider credential. The desktop app encrypts keys using the system credential store, with an explicit session-only fallback where protected storage is unavailable. In VS Code, keys use `SecretStorage`; the **NexusIDE: Configure Provider Key** command also stores them there. Browser dashboard keys are held in server memory for that session and are never written into project files.
 
 The standalone CLI can use existing environment variables `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, and `OPENROUTER_API_KEY`. It does not read `.env` files automatically. To use local Ollama, enable it in Settings, run your Ollama server, and set a tool-capable model ID that you have installed. Cloud calls send the requested prompt and tool-read context to your selected provider.
 
 Model IDs, endpoints, intelligence tiers, and USD prices per million tokens are editable. The PDF's model names are not treated as guaranteed API IDs. Defaults are starting examples; availability depends on the provider account. Prices and budget guards are estimates, not authoritative billing limits. Router confidence is a heuristic, not a measured accuracy claim.
 
-Configuration lives at `~/.config/nexuside/config.json` on all platforms unless `NEXUS_CONFIG` points elsewhere. Use `nexus config --path`, `nexus config --init`, and `nexus models` to inspect setup. Existing runs retain their configuration snapshot so an approval cannot silently switch execution policy.
+CLI/dashboard configuration lives at `~/.config/nexuside/config.json` on all platforms unless `NEXUS_CONFIG` points elsewhere. Desktop configuration is separate, in the OS application-data folder listed in [desktop data and recovery](docs/desktop.md#data-and-recovery). Use `nexus config --path`, `nexus config --init`, and `nexus models` to inspect CLI setup. Existing runs retain their configuration snapshot so an approval cannot silently switch execution policy.
 
 ## OpenRouter
 
