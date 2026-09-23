@@ -22,5 +22,18 @@ await build({
   external: ["vscode"],
   sourcemap: true,
 });
+await Promise.all(
+  ["main", "preload"].map((entry) =>
+    build({
+      entryPoints: [`src/desktop/${entry}.ts`],
+      outfile: `dist/desktop/${entry}.cjs`,
+      bundle: true,
+      platform: "node",
+      format: "cjs",
+      target: "node22",
+      external: ["electron"],
+    }),
+  ),
+);
 await viteBuild();
 await chmod("dist/cli.cjs", 0o755);

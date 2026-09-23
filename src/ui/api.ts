@@ -5,6 +5,7 @@ import type {
   Config,
   ModelConfig,
 } from "../core/types";
+import type { DesktopBridge, DesktopPreparation } from "../desktop/contracts";
 export interface AppState {
   workspace: string;
   name: string;
@@ -30,6 +31,7 @@ export type RunView = Run & {
 };
 declare global {
   interface Window {
+    nexusDesktop?: DesktopBridge;
     acquireVsCodeApi?: () => { postMessage: (message: unknown) => void };
   }
 }
@@ -56,6 +58,7 @@ export async function api<T = any>(
   action: string,
   data: unknown = {},
 ): Promise<T> {
+  if (window.nexusDesktop) return window.nexusDesktop.request(action, data);
   if (vscode) {
     const id = crypto.randomUUID();
     return new Promise((resolve, reject) => {
@@ -88,6 +91,17 @@ export async function api<T = any>(
   if (!r.ok) throw new Error(result.error ?? "Request failed");
   return result;
 }
+
+let prepareDesktop: (
+  save: boolean,
+) => Promise<DesktopPreparation> = async () => ({ dirty: 0 });
+export function registerDesktopPreparation(fn: typeof prepareDesktop) {
+  prepareDesktop = fn;
+  return () => {
+    if (prepareDesktop === fn) prepareDesktop = async () => ({ dirty: 0 });
+  };
+}
+export const prepareDesktopEditor = (save: boolean) => prepareDesktop(save);
 
 export function recoveryId(workspace: string) {
   const supplied = document.querySelector<HTMLMetaElement>(

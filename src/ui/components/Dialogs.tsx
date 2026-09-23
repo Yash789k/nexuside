@@ -201,9 +201,11 @@ export function SettingsDialog({
           <h3>Provider credential</h3>
           <p className="subtle">
             Storage: {state.credentialStorage}.{" "}
-            {state.credentialStorage === "Session memory"
-              ? "Keys are forgotten when this server stops. CLI runs can use provider environment variables."
-              : "Keys stay in VS Code’s protected credential store."}
+            {state.credentialStorage.startsWith("Session memory")
+              ? "Keys are forgotten when this session stops. CLI runs can use provider environment variables."
+              : window.nexusDesktop
+                ? "Saved keys are encrypted on this device and are never written into your project."
+                : "Keys stay in VS Code’s protected credential store."}
           </p>
           <div className="key-form">
             <select

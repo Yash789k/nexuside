@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 — standalone desktop
+
+- Electron desktop app with native folder selection, recent projects, IDE and Agent workflows, and an offline walkthrough using the bundled Node runtime.
+- Protected provider-key storage when the OS credential store is available; explicit session-memory fallback otherwise.
+- Acknowledged editor recovery before closing or switching projects, with Save All / Keep for recovery / Cancel choices; active work is cancelled on exit.
+- Platform installers and repeatable actual Electron integration tests alongside the existing VSIX and CLI.
+- Manual downloads/updates for this unsigned initial desktop distribution; Docker remains optional for isolated execution.
+
 ## 0.2.0 — local QA candidate, unpublished
 
 - Distinct IDE workspace with CodeMirror 6, persistent documents, shared split views, tab drag/reorder, group movement/resizing, quick-open, search and contextual assistance. Agent mode retains task planning, review and execution.

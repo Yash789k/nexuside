@@ -59,16 +59,15 @@ jobs:
       - run: npm run package:vsix
       - run: npm run package:cli
       - name: Create checksums
-        run: cd ../nexuside-local-qa && sha256sum nexuside-*.vsix nexuside-*.tgz > SHA256SUMS.txt
+        run: cd ../nexuside-desktop-downloads && sha256sum nexuside-*.vsix nexuside-*.tgz > SHA256SUMS.txt
       - name: Publish download assets
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" ../nexuside-local-qa/nexuside-*.vsix ../nexuside-local-qa/nexuside-*.tgz ../nexuside-local-qa/SHA256SUMS.txt
-            gh release edit "$GITHUB_REF_NAME" --draft=false
+            echo "Release already exists. Preserving the published download assets."
           else
-            gh release create "$GITHUB_REF_NAME" ../nexuside-local-qa/nexuside-*.vsix ../nexuside-local-qa/nexuside-*.tgz ../nexuside-local-qa/SHA256SUMS.txt --verify-tag --title "NexusIDE $GITHUB_REF_NAME" --notes-file CHANGELOG.md
+            gh release create "$GITHUB_REF_NAME" ../nexuside-desktop-downloads/nexuside-*.vsix ../nexuside-desktop-downloads/nexuside-*.tgz ../nexuside-desktop-downloads/SHA256SUMS.txt --verify-tag --title "NexusIDE $GITHUB_REF_NAME" --notes-file CHANGELOG.md
           fi
           nexus_release_id=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" --jq .id)
           gh api -H 'Cache-Control: no-cache' "repos/$GITHUB_REPOSITORY/releases/$nexus_release_id/assets?per_page=100" > /tmp/nexus-release-assets.json

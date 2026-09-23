@@ -1,6 +1,7 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
+import { Desktop } from "./Desktop";
 import "./styles.css";
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -23,7 +24,5 @@ class ErrorBoundary extends React.Component<
   }
 }
 createRoot(document.getElementById("root")!).render(
-  <ErrorBoundary>
-    <App />
-  </ErrorBoundary>,
+  <ErrorBoundary>{window.nexusDesktop ? <Desktop /> : <App />}</ErrorBoundary>,
 );

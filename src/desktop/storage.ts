@@ -1,0 +1,58 @@
+import { readFile, writeFile, rename, mkdir } from "node:fs/promises";
+import path from "node:path";
+import { randomUUID } from "node:crypto";
+export async function readJson<T>(file: string, fallback: T): Promise<T> {
+  try {
+    return JSON.parse(await readFile(file, "utf8"));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return fallback;
+    throw new Error(
+      `Cannot read ${path.basename(file)}. Restore a valid copy before continuing.`,
+    );
+  }
+}
+export async function writeJson(file: string, value: unknown) {
+  await mkdir(path.dirname(file), { recursive: true });
+  const temporary = `${file}.${randomUUID()}.tmp`;
+  await writeFile(temporary, JSON.stringify(value, null, 2), { mode: 0o600 });
+  await rename(temporary, file);
+}
+export class CredentialVault {
+  private entries: Record<string, string> = {};
+  private memory = new Map<string, string>();
+  private queue: Promise<unknown> = Promise.resolve();
+  constructor(
+    private file: string,
+    readonly protectedStorage: boolean,
+    private encrypt: (value: string) => Buffer,
+    private decrypt: (value: Buffer) => string,
+  ) {}
+  async load() {
+    this.entries = await readJson(this.file, {});
+  }
+  get(env: string) {
+    if (this.memory.has(env)) return this.memory.get(env) || undefined;
+    const stored = this.entries[env];
+    if (!stored) return undefined;
+    if (!this.protectedStorage)
+      throw new Error(
+        "Unlock your system credential store to use saved provider keys.",
+      );
+    return this.decrypt(Buffer.from(stored, "base64"));
+  }
+  set(env: string, value: string) {
+    const pending = this.queue
+      .catch(() => {})
+      .then(async () => {
+        const next = { ...this.entries };
+        if (!value || !this.protectedStorage) delete next[env];
+        else next[env] = this.encrypt(value).toString("base64");
+        // Without a protected OS store, never persist the provider credential.
+        await writeJson(this.file, next);
+        this.entries = next;
+        this.memory.set(env, value);
+      });
+    this.queue = pending;
+    return pending;
+  }
+}

@@ -24,7 +24,7 @@ const program = new Command()
   })
   .name("nexus")
   .description("NexusIDE — local IDE, agent and intelligent model router")
-  .version("0.2.0")
+  .version("0.3.0")
   .option("-w, --workspace <path>", "Workspace directory", process.cwd());
 const root = () => path.resolve(program.opts().workspace);
 async function engine() {

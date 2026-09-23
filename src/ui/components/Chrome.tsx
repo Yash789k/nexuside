@@ -185,7 +185,7 @@ export function StatusBar({ state }: { state?: AppState }) {
         <b className="dot" />
         Local workspace
       </span>
-      <span>NexusIDE {state?.version ?? "0.2.0"}</span>
+      <span>NexusIDE {state?.version ?? "0.3.0"}</span>
     </footer>
   );
 }

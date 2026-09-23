@@ -59,7 +59,7 @@ test("loopback HTTP server requires a token and same origin; real demo can be re
       if (state.status === "awaiting_approval") break;
       await new Promise((r) => setTimeout(r, 30));
     }
-    assert.equal(state.pending.kind, "edits");
+    assert.equal(state.pending?.kind, "edits", JSON.stringify({ status: state.status, error: state.error, operationError: state.operationError, steps: state.steps, events: state.events?.slice(-3) }));
     assert.equal((await request("file", { path: "../escape" })).status, 400);
     assert.equal(
       (await request("decision", { id: run.id, approved: false, revision: state.pending.revision })).status,

@@ -1,8 +1,8 @@
 {
   "name": "nexuside",
   "displayName": "NexusIDE",
-  "version": "0.2.0",
-  "description": "Local-first hybrid agentic IDE, model router, and cross-platform CLI.",
+  "version": "0.3.0",
+  "description": "NexusIDE desktop app, VS Code extension, and cross-platform agent CLI.",
   "publisher": "nexuside-local",
   "license": "MIT",
   "private": false,
@@ -80,10 +80,10 @@
     "test": "tsx --test tests/*.test.ts",
     "test:e2e": "playwright test",
     "check": "npm run typecheck && npm test && npm run build",
-    "prepackage:vsix": "node -e \"require('node:fs').mkdirSync('../nexuside-local-qa',{recursive:true})\"",
-    "package:vsix": "vsce package --no-dependencies --allow-missing-repository --skip-license --out ../nexuside-local-qa/nexuside-0.2.0.vsix",
-    "prepackage:cli": "node -e \"require('node:fs').mkdirSync('../nexuside-local-qa',{recursive:true})\"",
-    "package:cli": "npm pack --pack-destination ../nexuside-local-qa",
+    "prepackage:vsix": "node -e \"require('node:fs').mkdirSync('../nexuside-desktop-downloads',{recursive:true})\"",
+    "package:vsix": "vsce package --no-dependencies --allow-missing-repository --skip-license --out ../nexuside-desktop-downloads/nexuside-0.3.0.vsix",
+    "prepackage:cli": "node -e \"require('node:fs').mkdirSync('../nexuside-desktop-downloads',{recursive:true})\"",
+    "package:cli": "npm pack --pack-destination ../nexuside-desktop-downloads",
     "release:local": "npm run check && npm run package:vsix && npm run package:cli",
     "test:extension": "node scripts/test-extension.mjs",
     "test:sandbox": "tsx --test tests/sandbox.integration.ts",
@@ -92,7 +92,10 @@
     "test:smoke": "npm run check",
     "test:cli": "tsx --test tests/cli.integration.ts",
     "test:stress": "playwright test tests/e2e/stress.spec.ts",
-    "test:performance": "tsx scripts/performance.ts"
+    "test:performance": "tsx scripts/performance.ts",
+    "desktop": "npm run build && electron dist/desktop/main.cjs",
+    "package:desktop": "npm run build && electron-builder --publish never",
+    "test:desktop": "node scripts/test-desktop.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
@@ -114,6 +117,8 @@
     "codemirror": "^6.0.2",
     "commander": "^14.0.0",
     "diff": "^8.0.0",
+    "electron": "44.4.5",
+    "electron-builder": "26.15.3",
     "esbuild": "^0.25.0",
     "lucide-react": "^0.468.0",
     "prettier": "^3.9.9",
@@ -132,5 +137,6 @@
   "bugs": {
     "url": "https://github.com/Yash789k/nexuside/issues"
   },
-  "icon": "media/icon.png"
+  "icon": "media/icon.png",
+  "author": "NexusIDE contributors"
 }

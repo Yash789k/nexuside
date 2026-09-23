@@ -1,0 +1,75 @@
+name: Desktop installers
+on:
+  push:
+    branches: [codex/nexuside-desktop]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: --mac --arm64
+            label: mac-arm64
+          - os: windows-latest
+            target: --win --x64
+            label: windows-x64
+          - os: ubuntu-latest
+            target: --linux --x64
+            label: linux-x64
+    runs-on: ${{ matrix.os }}
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm run test:cli
+      - name: Desktop integration
+        if: runner.os != 'Linux'
+        run: npm run test:desktop
+      - name: Desktop integration on Linux
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test:desktop
+      - name: Package installers
+        run: npx electron-builder ${{ matrix.target }} --publish never
+      - name: Verify packaged macOS app
+        if: runner.os == 'macOS'
+        run: npm run test:desktop
+        env:
+          NEXUS_DESKTOP_EXE: ../nexuside-desktop-downloads/mac-arm64/NexusIDE.app/Contents/MacOS/NexusIDE
+          NEXUS_DESKTOP_EVIDENCE: ../nexuside-desktop-evidence/packaged
+      - name: Verify packaged Windows app
+        if: runner.os == 'Windows'
+        run: npm run test:desktop
+        env:
+          NEXUS_DESKTOP_EXE: ../nexuside-desktop-downloads/win-unpacked/NexusIDE.exe
+          NEXUS_DESKTOP_EVIDENCE: ../nexuside-desktop-evidence/packaged
+      - name: Verify packaged Linux app
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test:desktop
+        env:
+          NEXUS_DESKTOP_EXE: ../nexuside-desktop-downloads/linux-unpacked/nexuside
+          NEXUS_DESKTOP_EVIDENCE: ../nexuside-desktop-evidence/packaged
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nexuside-${{ matrix.label }}
+          path: |
+            ../nexuside-desktop-downloads/*.dmg
+            ../nexuside-desktop-downloads/*.zip
+            ../nexuside-desktop-downloads/*.exe
+            ../nexuside-desktop-downloads/*.AppImage
+            ../nexuside-desktop-downloads/*.deb
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: desktop-evidence-${{ matrix.label }}
+          path: ../nexuside-desktop-evidence

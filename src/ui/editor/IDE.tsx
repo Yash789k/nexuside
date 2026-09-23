@@ -10,7 +10,12 @@ import { EditorSelection, Transaction } from "@codemirror/state";
 import { openSearchPanel, gotoLine } from "@codemirror/search";
 import { undo, redo, isolateHistory } from "@codemirror/commands";
 import { EditorModel, leaves, type Group, type Layout } from "./model";
-import { api, type AppState, type RunView } from "../api";
+import {
+  api,
+  registerDesktopPreparation,
+  type AppState,
+  type RunView,
+} from "../api";
 import { Approval, Changes, Overview } from "../components/Review";
 
 function Modal({
@@ -168,9 +173,27 @@ export function IDE({
   useEffect(() => {
     void model.init();
     return () => {
-      void model.persist();
+      if (!window.nexusDesktop) void model.persist();
     };
   }, [model]);
+  useEffect(
+    () =>
+      registerDesktopPreparation(async (save) => {
+        if (!model.loaded)
+          throw new Error("Wait for editor recovery to finish before closing.");
+        await Promise.all([...model.docs.values()].map((d) => d.saving));
+        if (save) await model.saveAll();
+        await model.persist();
+        if (model.recovery !== "Recovery saved")
+          throw new Error(
+            "Recovery could not be saved. Keep this project open and resolve the editor error.",
+          );
+        return {
+          dirty: [...model.docs.values()].filter((d) => model.dirty(d)).length,
+        };
+      }),
+    [model],
+  );
   useEffect(() => {
     if (file && model.loaded) safe(() => model.open(file.path));
   }, [file?.nonce, model.loaded]);
@@ -193,6 +216,7 @@ export function IDE({
   }, [model]);
   useEffect(() => {
     const before = (e: BeforeUnloadEvent) => {
+      if (window.nexusDesktop) return; // Desktop closes only after acknowledged recovery.
       if ([...model.docs.values()].some((d) => model.dirty(d))) {
         e.preventDefault();
         e.returnValue = "";

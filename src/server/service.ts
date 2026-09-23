@@ -21,6 +21,14 @@ export class Service {
   private removedKeys = new Set<string>();
   private jobErrors = new Map<string, string>();
   private jobs = new Map<string, Promise<unknown>>();
+  hasActiveJobs() {
+    return this.jobs.size > 0;
+  }
+  async shutdown() {
+    const jobs = [...this.jobs.entries()];
+    await Promise.all(jobs.map(([id]) => this.engine.cancel(id)));
+    await Promise.all(jobs.map(([, job]) => job));
+  }
   constructor(
     public workspace: Workspace,
     private externalKey?: KeyResolver,
@@ -78,7 +86,7 @@ export class Service {
             createdAt: r.createdAt,
             modelId: r.modelId,
           })),
-          version: "0.2.0",
+          version: "0.3.0",
           credentialStorage: this.persistKey
             ? "System credential store"
             : "Session memory",

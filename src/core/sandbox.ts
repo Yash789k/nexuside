@@ -7,6 +7,10 @@ import { Workspace } from "./workspace";
 import type { Config, TestResult } from "./types";
 import { browserSchema } from "./tools";
 export const SANDBOX_IMAGE = "nexuside-sandbox:0.1.0";
+let bundledNode: { executable: string; env: NodeJS.ProcessEnv } | undefined;
+export function setBundledNodeRuntime(runtime: typeof bundledNode) {
+  bundledNode = runtime;
+}
 const dockerEnv = () => ({
   ...cleanEnv(),
   HOME: process.env.HOME,
@@ -83,6 +87,7 @@ export async function runTests(
     }
     if (process.platform === "win32" && target === "pytest")
       executable = "python";
+    if (target === "node" && bundledNode) executable = bundledNode.executable;
     return {
       target,
       runner,
@@ -90,6 +95,10 @@ export async function runTests(
         cwd: workspace.root,
         signal,
         timeout: 120_000,
+        env:
+          target === "node" && bundledNode
+            ? { ...cleanEnv(), ...bundledNode.env }
+            : undefined,
       })),
     };
   }

@@ -1,0 +1,37 @@
+appId: io.nexuside.desktop
+productName: NexusIDE
+directories:
+  output: ../nexuside-desktop-downloads
+extraMetadata:
+  main: dist/desktop/main.cjs
+files:
+  - dist/desktop/**
+  - dist/web/**
+  - media/desktop-icon.png
+  - LICENSE
+  - package.json
+  - "!node_modules/**"
+asar: true
+npmRebuild: false
+artifactName: NexusIDE-${version}-${os}-${arch}.${ext}
+mac:
+  category: public.app-category.developer-tools
+  target: [dmg, zip]
+  identity: null
+  notarize: false
+  icon: media/desktop-icon.png
+dmg:
+  sign: false
+win:
+  target: [nsis]
+  icon: media/desktop-icon.png
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: false
+linux:
+  target: [AppImage, deb]
+  category: Development
+  icon: media/desktop-icon.png
+publish: null

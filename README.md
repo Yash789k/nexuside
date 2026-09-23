@@ -4,28 +4,38 @@ A local-first AI coding workspace with a VS Code extension, a browser dashboard,
 
 ![NexusIDE review workspace](docs/dashboard.png)
 
-**Version 0.2.0 — local QA build, not published.** Bring your own provider credentials, or try the explicitly labeled offline walkthrough without any API calls. This is a working local tool, not a hosted cloud service.
+**Version 0.3.0** adds a standalone Electron desktop app alongside the VS Code extension and CLI. Bring your own provider credentials, or try the offline walkthrough without API calls. Files and agent execution remain local; selected cloud models receive your prompt and requested project context.
 
 ## Download and start
 
-Use the local `nexuside-0.2.0.vsix` and `nexuside-0.2.0.tgz` artifacts supplied with this QA build. [GitHub Releases](https://github.com/Yash789k/nexuside/releases/latest) still contains the separately published 0.1.0 release.
+Open [GitHub Releases](https://github.com/Yash789k/nexuside/releases/latest) and choose a download for your operating system.
+
+### Standalone desktop app
+
+- **macOS Apple Silicon:** `NexusIDE-0.3.0-mac-arm64.dmg` — open it and drag NexusIDE to Applications.
+- **Windows x64:** `NexusIDE-0.3.0-win-x64.exe` — run the per-user installer.
+- **Linux x64:** `NexusIDE-0.3.0-linux-x64.AppImage` or `.deb` — use the portable app or Debian package.
+
+Launch **NexusIDE**, select **Open project folder**, then configure a provider in **Settings**. The app includes its UI and Node runtime: VS Code, a separate Node installation, a terminal server and Docker are not required to launch it. **Try an offline walkthrough** creates a separate project; in Agent mode, choose **Try the offline walkthrough**, review the edits, then approve the bundled Node tests.
+
+Desktop builds are currently unsigned/not notarized for public distribution. macOS and Windows may require their normal first-launch approval. See [desktop installation and limitations](docs/desktop.md). A ZIP contains the macOS app as an alternative to the DMG. Availability and platform test results are recorded in each release's notes.
 
 ### VS Code
 
-1. Download `nexuside-0.2.0.vsix`.
+1. Download `nexuside-0.3.0.vsix`.
 2. In VS Code, open **Extensions → … → Install from VSIX** and select it.
 3. Open and trust a project folder.
 4. Run **NexusIDE: Open Workspace** from the command palette.
 5. Select **Try the offline walkthrough**, or open **Settings** to connect your models.
 
-You can also install with `code --install-extension ./nexuside-0.2.0.vsix`. The extension bundles its runtime; you do not need to run npm install in your project.
+You can also install with `code --install-extension ./nexuside-0.3.0.vsix`. The extension bundles its runtime; you do not need to run npm install in your project.
 
 ### Terminal / PowerShell
 
-Install [Node.js 22 or later](https://nodejs.org/en/download), download `nexuside-0.2.0.tgz`, then run:
+Install [Node.js 22 or later](https://nodejs.org/en/download), download `nexuside-0.3.0.tgz`, then run:
 
 ```sh
-npm install -g ./nexuside-0.2.0.tgz
+npm install -g ./nexuside-0.3.0.tgz
 nexus --help
 nexus demo --yes
 ```
