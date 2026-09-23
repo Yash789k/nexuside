@@ -15,7 +15,7 @@ cli = str(Path(sys.argv[1] if len(sys.argv) > 1 else "dist/cli.cjs").resolve())
 node = shutil.which("node")
 assert node
 results = []
-evidence = Path("../nexuside-qa-evidence")
+evidence = Path(os.environ.get("NEXUS_EVIDENCE", "../nexuside-qa-evidence"))
 evidence.mkdir(exist_ok=True)
 
 

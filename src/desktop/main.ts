@@ -49,9 +49,31 @@ let preparing:
 const pending = new Set<Promise<unknown>>();
 const downloads = "https://github.com/Yash789k/nexuside/releases/latest";
 const credentialLabel = () =>
-  vault.protectedStorage
+  vault.warning ||
+  (vault.protectedStorage
     ? "Encrypted on this device using the system credential store"
-    : "Session memory — no protected credential store available";
+    : "Session memory — no protected credential store available");
+async function credentialOperation<T>(operation: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  try {
+    return await Promise.race([
+      operation,
+      new Promise<T>((_resolve, reject) => {
+        timer = setTimeout(
+          () =>
+            reject(
+              new Error(
+                "The system credential store did not respond. Unlock it and try again.",
+              ),
+            ),
+          10_000,
+        );
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer!);
+  }
+}
 const snapshot = (): DesktopState => ({
   version,
   project,
@@ -224,8 +246,9 @@ async function boot() {
   vault = new CredentialVault(
     path.join(profile, "credentials.json"),
     protectedStorage,
-    (v) => safeStorage.encryptString(v),
-    (v) => safeStorage.decryptString(v),
+    (v) => credentialOperation(safeStorage.encryptStringAsync(v)),
+    async (v) =>
+      (await credentialOperation(safeStorage.decryptStringAsync(v))).result,
   );
   await vault.load();
   const config = await readJson(process.env.NEXUS_CONFIG!, null);

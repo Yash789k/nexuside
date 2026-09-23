@@ -23,19 +23,20 @@ export async function writeJson(file: string, value: unknown) {
   }
 }
 export class CredentialVault {
+  warning = "";
   private entries: Record<string, string> = {};
   private memory = new Map<string, string>();
   private queue: Promise<unknown> = Promise.resolve();
   constructor(
     private file: string,
     readonly protectedStorage: boolean,
-    private encrypt: (value: string) => Buffer,
-    private decrypt: (value: Buffer) => string,
+    private encrypt: (value: string) => Buffer | Promise<Buffer>,
+    private decrypt: (value: Buffer) => string | Promise<string>,
   ) {}
   async load() {
     this.entries = await readJson(this.file, {});
   }
-  get(env: string) {
+  async get(env: string) {
     if (this.memory.has(env)) return this.memory.get(env) || undefined;
     const stored = this.entries[env];
     if (!stored) return undefined;
@@ -43,7 +44,13 @@ export class CredentialVault {
       throw new Error(
         "Unlock your system credential store to use saved provider keys.",
       );
-    return this.decrypt(Buffer.from(stored, "base64"));
+    try {
+      return await this.decrypt(Buffer.from(stored, "base64"));
+    } catch {
+      this.warning =
+        "Saved keys are locked or unavailable. Unlock the system credential store or re-enter your provider key.";
+      return undefined;
+    }
   }
   set(env: string, value: string) {
     const pending = this.queue
@@ -51,11 +58,12 @@ export class CredentialVault {
       .then(async () => {
         const next = { ...this.entries };
         if (!value || !this.protectedStorage) delete next[env];
-        else next[env] = this.encrypt(value).toString("base64");
+        else next[env] = (await this.encrypt(value)).toString("base64");
         // Without a protected OS store, never persist the provider credential.
         await writeJson(this.file, next);
         this.entries = next;
         this.memory.set(env, value);
+        this.warning = "";
       });
     this.queue = pending;
     return pending;

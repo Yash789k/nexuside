@@ -9,7 +9,7 @@ exports.run = async () => {
     checks: [],
     blocked: [],
   };
-  const evidence = path.resolve("../nexuside-qa-evidence");
+  const evidence = path.resolve(process.env.NEXUS_EVIDENCE ?? "../nexuside-qa-evidence");
   await fs.mkdir(evidence, { recursive: true });
   try {
     const extension = vscode.extensions.getExtension("nexuside-local.nexuside");

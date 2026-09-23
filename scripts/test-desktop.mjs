@@ -25,6 +25,12 @@ delete env.ELECTRON_RUN_AS_NODE;
 // The demo must use the bundled Node runtime, with no Node/npm/Docker on PATH.
 if (process.platform !== "win32") env.PATH = "/usr/bin:/bin:/usr/sbin:/sbin";
 let app, page;
+const watchdog = setTimeout(() => {
+  console.error("Desktop integration exceeded 180 seconds", checks);
+  app?.process()?.kill("SIGKILL");
+  process.exit(1);
+}, 180_000);
+
 async function launch() {
   app = await electron.launch({
     executablePath: process.env.NEXUS_DESKTOP_EXE ?? require("electron"),
@@ -39,6 +45,7 @@ async function launch() {
   });
   page = await app.firstWindow();
   page.on("pageerror", (error) => errors.push(error.message));
+  console.log("Desktop window launched", process.platform);
   await expect(
     page.getByRole("button", { name: "Open project folder" }),
   ).toBeVisible();
@@ -84,6 +91,7 @@ try {
     nodeIntegration: false,
   });
   await page.screenshot({ path: path.join(evidence, "desktop-welcome.png") });
+  console.log("Desktop phase passed");
   checks.push(
     "Fresh launch, meaningful welcome, isolated renderer, no Node installation needed",
   );
@@ -103,6 +111,7 @@ try {
     .fill("export const greeting = 'Recovered unsaved text';\n");
   await expect(editor.nth(1)).toContainText("Recovered unsaved text");
   await page.screenshot({ path: path.join(evidence, "desktop-ide.png") });
+  console.log("Desktop phase passed");
   checks.push(
     "Native folder selection boundary, real files, editing/save, synchronized split views",
   );
@@ -125,6 +134,7 @@ try {
   await expect
     .poll(() => readFile(path.join(project, "hello.ts"), "utf8"))
     .toContain("Recovered unsaved text");
+  console.log("Desktop phase passed");
   checks.push(
     "Cancel-close, keep recovery, actual app restart, recent project and unsaved split restoration",
   );
@@ -186,6 +196,7 @@ try {
   await page
     .getByRole("button", { name: "Save settings", exact: true })
     .click();
+  console.log("Desktop phase passed");
   checks.push(
     "Settings, credential restoration after restart (or explicit session fallback), removal, workspace traversal denial",
   );
@@ -217,6 +228,7 @@ try {
     timeout: 30_000,
   });
   await page.screenshot({ path: path.join(evidence, "desktop-agent.png") });
+  console.log("Desktop phase passed");
   checks.push(
     "No-key walkthrough, actual edits and three tests through bundled Node, separate approvals, no Docker",
   );
@@ -269,4 +281,5 @@ try {
     await messageResponse(1).catch(() => {});
     await app.close().catch(() => {});
   }
+  clearTimeout(watchdog);
 }

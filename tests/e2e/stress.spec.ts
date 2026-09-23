@@ -2,7 +2,7 @@ import { test, expect } from "./fixtures";
 import { writeFile, readFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import AxeBuilder from "@axe-core/playwright";
-const out = path.resolve("../nexuside-qa-evidence");
+const out = path.resolve(process.env.NEXUS_EVIDENCE ?? "../nexuside-qa-evidence");
 test("S02 100 real documents, four groups, supported limits, seeded tab navigation and accessibility", async ({
   page,
   nexus,

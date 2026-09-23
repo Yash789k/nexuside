@@ -21,6 +21,7 @@ jobs:
             target: --linux --x64
             label: linux-x64
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
     steps:

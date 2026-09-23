@@ -14,7 +14,7 @@ test("S01 bounded local browser soak with seeded edits, mode/group cycles and re
   );
   test.setTimeout((seconds + 90) * 1000);
   const label = process.env.NEXUS_SOAK_LABEL ?? "soak";
-  const evidence = path.resolve("../nexuside-qa-evidence");
+  const evidence = path.resolve(process.env.NEXUS_EVIDENCE ?? "../nexuside-qa-evidence");
   await mkdir(evidence, { recursive: true });
   const sourceHasher = createHash("sha256");
   async function hashSources(dir: string) {

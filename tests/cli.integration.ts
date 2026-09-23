@@ -141,7 +141,7 @@ test("C03 invalid flags, attachment boundaries and unknown model return valid er
     await f.close();
   }
 });
-test("C04 repeated media flags reach a local provider; Ctrl+C records cancellation and exits 130", async () => {
+test(`C04 repeated media flags reach a local provider; ${process.platform === "win32" ? "cancel command stops the active run" : "SIGINT records cancellation and exits 130"}`, async () => {
   const f = await fixture();
   let arrived!: () => void;
   const started = new Promise<void>((r) => (arrived = r));
@@ -200,9 +200,20 @@ test("C04 repeated media flags reach a local provider; Ctrl+C records cancellati
     await started;
     assert.ok(JSON.stringify(requestBody).includes("input_audio"));
     assert.ok(JSON.stringify(requestBody).includes("image_url"));
-    p.child.kill("SIGINT");
+    // Node's child.kill('SIGINT') uses forced termination on Windows; it does
+    // not simulate Ctrl+C. Exercise the real cross-process cancel command there.
+    // Native Windows console Ctrl+C still requires a ConPTY/console harness.
+    if (process.platform === "win32") {
+      const listed = await f.run(["runs", "--json"]);
+      assert.equal(listed.code, 0, listed.stderr);
+      const id = JSON.parse(listed.stdout).find(
+        (r: any) => r.prompt === "SLOW_FIXTURE",
+      ).id;
+      const cancelled = await f.run(["cancel", id]);
+      assert.equal(cancelled.code, 0, cancelled.stderr);
+    } else p.child.kill("SIGINT");
     const end = await p.result;
-    assert.equal(end.code, 130, end.stderr);
+    assert.equal(end.code, process.platform === "win32" ? 0 : 130, end.stderr);
     assert.equal(JSON.parse(end.stdout).status, "cancelled");
   } finally {
     server.closeAllConnections();

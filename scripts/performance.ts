@@ -3,7 +3,7 @@ import { tmpdir, cpus, platform, release, arch } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { chromium } from "@playwright/test";
-const evidence = path.resolve("../nexuside-qa-evidence");
+const evidence = path.resolve(process.env.NEXUS_EVIDENCE ?? "../nexuside-qa-evidence");
 await mkdir(evidence, { recursive: true });
 const summaries: any[] = [];
 const browser = await chromium.launch();
